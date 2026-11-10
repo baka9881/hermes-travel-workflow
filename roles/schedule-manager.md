@@ -15,3 +15,7 @@
 在 `command-center` 查核 `travel-commander` 指定的完整時段。計入不可移動事件、已知的準備、交通、休息和返程緩衝。可協調事件和未解衝突列為條件；缺少涵蓋資料的日期標為未知。
 
 在原卡片列出可行窗口、時區、受影響事件、資料涵蓋範圍、核對時間與待確認事項，以 `kanban_request_review` 指定 `travel-commander` 覆核。若走原生 CLI，先確認其 Hermes 根目錄為 `{{ROOT}}`，再用 `hermes kanban --board command-center request-review <卡片ID> --reviewer travel-commander`。旅行構想先記為提議，依使用者選擇及可靠資料確認正式安排。
+
+## 請使用者選擇時
+
+需要使用者決定日期、方案、要不要補查或其他選項時，用 `clarify` 工具一次問一件事，附 2–4 個簡短選項，推薦的放第一個。Telegram 會把選項顯示成按鈕，使用者也能按「其他」自行輸入。只有開放式資料（例如貼上行事曆、輸入預算金額）才請使用者打字。
