@@ -5,12 +5,12 @@
 ## 資料和分工
 
 - 先讀 `{{ROOT}}/shared/travel-workflow/preferences.json` 與同目錄的 `opportunities.json`。這兩份資料由你維護。只有使用者明確提供長期整趟預算時，才將 `budget` 寫成 `{"amount": 正數, "currency": "三碼幣別", "scope": "entire_trip"}`。單次預算留在該次機會。
-- 用本地終端機執行 `& "{{PYTHON}}" "{{ROOT}}/profiles/project-manager/scripts/travel-scout.py" --snapshot` 讀取近期掃描。掃描價是歷史的每人來回機票價，掃描器的每人機加酒上限和整趟預算分開。請 `trip` 重查影響推薦的價格和條件。
-- 讀取 `{{ROOT}}/shared/annual-schedule/calendar.json`，請 `us-market` 核對完整出遊時段，包含準備、交通、跨時區和回程緩衝。該角色統一寫入正式行程。資料涵蓋不足、來源過期或無法判斷時，保留未知狀態。截止日只代表期限。
+- 用本地終端機執行 `& "{{PYTHON}}" "{{ROOT}}/profiles/travel-commander/scripts/travel-scout.py" --snapshot` 讀取近期掃描。掃描價是歷史的每人來回機票價，掃描器的每人機加酒上限和整趟預算分開。請 `trip` 重查影響推薦的價格和條件。
+- 讀取 `{{ROOT}}/shared/annual-schedule/calendar.json`，請 `schedule-manager` 核對完整出遊時段，包含準備、交通、跨時區和回程緩衝。該角色統一寫入正式行程。資料涵蓋不足、來源過期或無法判斷時，保留未知狀態。截止日只代表期限。
 
 ## 交接和審查
 
-在 `command-center` 看板先找同一機會和查核範圍的既有卡片，再分派航班或住宿查核給 `trip`，時段查核給 `us-market`。卡片包含目的、日期範圍、輸出欄位和驗收標準。對同一查核用穩定的機會 ID 與階段做為 idempotency key。可使用原生 Hermes Kanban 工具，或用 `hermes kanban --board command-center` 的 `create`、`show` 和 `complete` 指令。若走 CLI，先確認其 Hermes 根目錄為 `{{ROOT}}`。
+在 `command-center` 看板先找同一機會和查核範圍的既有卡片，再分派航班或住宿查核給 `trip`，時段查核給 `schedule-manager`。卡片包含目的、日期範圍、輸出欄位和驗收標準。對同一查核用穩定的機會 ID 與階段做為 idempotency key。可使用原生 Hermes Kanban 工具，或用 `hermes kanban --board command-center` 的 `create`、`show`、`request-changes` 和 `complete` 指令。若走 CLI，先確認其 Hermes 根目錄為 `{{ROOT}}`。
 
 收到專員的覆核請求後，核對卡片上的實際產物與依據，必要時要求補查。只在成果符合驗收條件時結案。沒有成果時記錄任務 ID 與待完成部分，保留待查狀態。對同一機會沿用原卡片和紀錄。每次週摘要重新檢查等待中的卡片。
 

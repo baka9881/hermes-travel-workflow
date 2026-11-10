@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 PACKAGE = Path(__file__).resolve().parent
-PROFILES = ("trip", "project-manager", "us-market")
+PROFILES = ("trip", "travel-commander", "schedule-manager")
 PROFILE_NAMES = ("Trip Agent", "旅遊總指揮官 小居", "Schedule Manager")
 
 
@@ -162,9 +162,9 @@ def install(root, delivery):
         elif not soul.exists():
             write_new(soul, wanted)
     for source, target in [
-        ("scripts/travel-scout.py", "profiles/project-manager/scripts/travel-scout.py"),
+        ("scripts/travel-scout.py", "profiles/travel-commander/scripts/travel-scout.py"),
         ("scripts/scan-trip.py", "profiles/trip/scripts/scan-trip.py"),
-        ("skills/travel-planning/SKILL.md", "profiles/project-manager/skills/travel-planning/SKILL.md"),
+        ("skills/travel-planning/SKILL.md", "profiles/travel-commander/skills/travel-planning/SKILL.md"),
     ]:
         same_or_create(root / target, rendered(PACKAGE / source, root))
     for name, target in [("calendar", "shared/annual-schedule/calendar.json"),
@@ -183,8 +183,8 @@ def install(root, delivery):
     weekly = rendered(PACKAGE / "prompts/weekly.md", root).decode("utf-8")
     alert = rendered(PACKAGE / "prompts/alert.md", root).decode("utf-8")
     ensure_job(root, "trip", "travel-workflow/scanner", "*/15 * * * *", "", "local", script="scan-trip.py")
-    ensure_job(root, "project-manager", "travel-workflow/weekly", "0 9 * * 1", weekly, delivery, continuity=True)
-    ensure_job(root, "project-manager", "travel-workflow/alerts", "*/15 * * * *", alert, delivery,
+    ensure_job(root, "travel-commander", "travel-workflow/weekly", "0 9 * * 1", weekly, delivery, continuity=True)
+    ensure_job(root, "travel-commander", "travel-workflow/alerts", "*/15 * * * *", alert, delivery,
                monitor="travel-scout.py", continuity=True)
     print(f"Installed in {root}. New jobs are paused; existing job state was preserved.")
 
