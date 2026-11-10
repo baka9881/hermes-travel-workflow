@@ -39,11 +39,11 @@ hermes -p trip cron list --all
 hermes -p travel-commander cron list --all
 ```
 
-安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，首次安裝加上 `--deliver telegram`，並為 `travel-commander` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
+安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，執行 `py -3 .\setup.py delivery telegram --root "$workflowRoot"`（或首次安裝時加上 `--deliver telegram`），並為 `travel-commander` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
 
 ## 啟動與第一次使用
 
-在上面的 PowerShell 繼續操作。替換下方的排程 ID 為 `cron list --all` 顯示的值。
+在上面的 PowerShell 繼續操作。
 
 1. 在 Trip Agent 指定欲監看的區域。內附掃描器的 `add-region` 會建立台北出發的監控。
 2. 請 Schedule Manager 核對你提供的日曆或 ICS，並記下資料涵蓋範圍。課業的截止日與實際占用的時段分開。
@@ -54,10 +54,10 @@ hermes -p travel-commander cron list --all
 py -3 "$env:HERMES_HOME/profiles/trip/scripts/scan-trip.py" add-region Japan 日本
 py -3 "$env:HERMES_HOME/profiles/trip/scripts/scan-trip.py" regions
 
-hermes -p trip cron resume "<scanner-job-id>"
-hermes -p travel-commander cron resume "<weekly-job-id>"
-hermes -p travel-commander cron resume "<alerts-job-id>"
+py -3 .\setup.py resume --root "$workflowRoot"
 ```
+
+`setup.py resume` 依名稱找出三個排程並啟用，已啟用的會略過；`setup.py pause` 一次暫停三個排程。
 
 | 排程 | 台北時間 | 工作 |
 | --- | --- | --- |
@@ -74,8 +74,11 @@ npm --prefix scanner test
 npm --prefix scanner run typecheck
 py -3 -m unittest discover -s tests
 py -3 "$env:HERMES_HOME/profiles/travel-commander/scripts/travel-scout.py" --snapshot
+py -3 .\setup.py check --root "$workflowRoot"
 ```
 
-安裝命令可以重跑以檢查已安裝設定。重跑時使用與首次安裝相同的 `--deliver`；選項不同時，安裝器會判定排程定義衝突並停止，不會改動既有排程。若發現角色或排程定義衝突，先在本機檢視錯誤訊息。移機時使用新的 checkout 和 Hermes 資料目錄，按上面步驟配置帳號。需要延續原有行程和偏好時，在本機核對 schema 後移轉 `shared/annual-schedule/calendar.json` 及 `shared/travel-workflow/` 下的 `preferences.json` 與 `opportunities.json`。新安裝的 `runtime.json` 記錄新環境的路徑。個人資料、掃描 SQLite、帳號憑證、聊天紀錄和私人 Hermes 外掛由原環境獨立管理。
+`setup.py check` 只讀取、不修改，會列出三個排程的狀態、投遞目標和最近一次結果，並指出缺少的掃描器套件、連續失敗的排程，以及提醒還在等待哪些資料（例如 `budget`、`calendar_coverage`）。有問題時結束代碼為 1。行程涵蓋的結束日已過時，提醒會視為涵蓋不足而保持靜默。推送到 GitHub 時，`.github/workflows/test.yml` 會自動執行上面三組測試。
+
+安裝命令可以重跑以檢查已安裝設定，並沿用這個資料目錄目前的投遞設定。要切換投遞方式時用 `setup.py delivery local|telegram`；重跑安裝時指定不同的 `--deliver`，安裝器會停止並提示改用這個指令，不會改動既有排程。若發現角色或排程定義衝突，先在本機檢視錯誤訊息。移機時使用新的 checkout 和 Hermes 資料目錄，按上面步驟配置帳號。需要延續原有行程和偏好時，在本機核對 schema 後移轉 `shared/annual-schedule/calendar.json` 及 `shared/travel-workflow/` 下的 `preferences.json` 與 `opportunities.json`。新安裝的 `runtime.json` 記錄新環境的路徑。個人資料、掃描 SQLite、帳號憑證、聊天紀錄和私人 Hermes 外掛由原環境獨立管理。
 
 `scanner/` 收錄 Trip Bot 在提交 `baf9dfee219f396b83b6face4b085ee995d15530` 的執行與測試來源。原本的 `baka9881/trip-bot` GitHub repo 已刪除，這個目錄就是現在維護的版本，來源與修改內容見 [PROVENANCE](scanner/PROVENANCE.md)。整合版以本機 CLI 輸出接回 Hermes，排程的 Telegram 投遞由 Hermes 管理。

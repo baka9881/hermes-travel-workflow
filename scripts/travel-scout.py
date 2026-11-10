@@ -63,7 +63,8 @@ def missing_prerequisites(root):
         start = date.fromisoformat(coverage["start"])
         end = date.fromisoformat(coverage["end"])
         checked = datetime.fromisoformat(coverage["checked_at"])
-        covered = (status == "verified" and start <= end
+        today = datetime.now(timezone(timedelta(hours=8))).date()
+        covered = (status == "verified" and start <= end and end >= today
                    and start.isoformat() == coverage["start"]
                    and end.isoformat() == coverage["end"]
                    and checked.tzinfo is not None)

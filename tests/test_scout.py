@@ -93,6 +93,13 @@ class ScoutTests(unittest.TestCase):
                 self.put("shared/annual-schedule/calendar.json", {"coverage": coverage})
                 self.assertEqual(self.run_scout(), {"status": "waiting", "missing": ["calendar_coverage"]})
 
+    def test_expired_calendar_coverage_blocks_signals(self):
+        self.database()
+        self.ready()
+        yesterday = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=1)).date().isoformat()
+        self.put("shared/annual-schedule/calendar.json", {"coverage": {"status": "verified", "start": "2026-01-01", "end": yesterday, "checked_at": "2026-01-01T00:00:00Z"}})
+        self.assertEqual(self.run_scout(), {"status": "waiting", "missing": ["calendar_coverage"]})
+
     def test_another_installation_cannot_read_the_database(self):
         self.ready()
         self.database()

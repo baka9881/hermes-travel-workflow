@@ -1,0 +1,31 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: scanner/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scanner dependencies
+        run: npm --prefix scanner ci --ignore-scripts
+      - name: Scanner tests
+        run: npm --prefix scanner test
+      - name: Scanner typecheck
+        run: npm --prefix scanner run typecheck
+      - name: Workflow tests
+        run: python -m unittest discover -s tests -v
