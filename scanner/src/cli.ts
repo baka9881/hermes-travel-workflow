@@ -31,13 +31,9 @@ import { freshProfile, saveProfile } from './hotel-profiles';
 import { spawnSync } from 'node:child_process';
 import { checkOutput } from './rules';
 
-/** Telegram buttons for the output; each label comes back as the user's message when tapped. */
+/** Preserve button labels for the upstream output checks. */
 let keyboard: string[][] = [];
-/**
- * With --telegram the output is collected in segments instead of printed: each hotel is its own
- * segment carrying its room and bathroom photos, so it goes out as one album captioned with its
- * prices and booking links.
- */
+/** Group output and photos by hotel for the --check diagnostics. */
 const segments: Segment[] = [{ text: '', photos: [] }];
 function beginSegment(photos: string[] = [], own = false) { segments.push({ text: '', photos, own }); }
 const FLIGHT_LIST_BUTTON = '✈️ 機票列表';

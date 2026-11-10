@@ -21,12 +21,12 @@ flowchart LR
 
 ## 在 Windows 安裝
 
-準備 Hermes CLI、Git、Node.js 24 以上、npm 和 Python 3.10 以上。安裝指令會使用目前的 Python 與 Node.js 路徑。選擇新的 Hermes 資料目錄，每套環境使用獨立的 repo checkout。
+準備 Hermes CLI、Git、Node.js 24 以上、npm 和 Python 3.11 以上。安裝流程使用 Hermes 0.23.0 驗證。選擇位於 Git checkout 外的新 Hermes 資料目錄，每套環境使用獨立的 checkout。
 
 ```powershell
 git clone https://github.com/baka9881/hermes-travel-workflow.git
 Set-Location hermes-travel-workflow
-npm --prefix scanner ci
+npm --prefix scanner ci --ignore-scripts
 npm --prefix scanner exec -- playwright install chromium
 
 $workflowRoot = Join-Path $env:LOCALAPPDATA "hermes-travel-workflow"
