@@ -1,8 +1,8 @@
 # Portable Trip Bot source
 
-Upstream: https://github.com/baka9881/trip-bot
+Upstream: `baka9881/trip-bot` (GitHub repository deleted on 2026-11-10; this directory is now the maintained copy).
 
-Pinned commit: `baf9dfee219f396b83b6face4b085ee995d15530`.
+Pinned commit: `baf9dfee219f396b83b6face4b085ee995d15530`. The commit is no longer reachable on GitHub.
 
 Export allowlist: tracked `package.json`, `package-lock.json`, `tsconfig.json`, and `src/` from that commit. No checkout history, environment files, live state, browser sessions, or original Windows launchers are included. This is a modified snapshot, not an unchanged upstream checkout.
 
@@ -10,6 +10,7 @@ Portability changes:
 
 - `src/telegram.ts`: remove all account/environment/configuration reads and all HTTP delivery; retain formatting helpers and the caller-compatible function, which writes segment text once to stdout. Native Hermes owns delivery. Photos and Telegram buttons are not sent by this local boundary.
 - `src/cli.ts`: reject `--telegram` before dispatch and remove the misleading Telegram-success path. Tick, background jobs and alert callbacks use the same local boundary.
+- `package.json`: description names the local Hermes scanner instead of a Telegram bot.
 - `src/local-delivery.test.ts`: assert local text output and zero HTTP calls.
 - `../scripts/scan-trip.py`: explicit Node/tsx/CLI paths, isolated DB override, one-root ownership marker and OS process lock. The wrapper does not print a second copy of scanner output. It never imports the live Hermes configuration.
 
