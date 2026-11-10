@@ -11,6 +11,7 @@ import sys
 
 PACKAGE = Path(__file__).resolve().parent
 PROFILES = ("trip", "project-manager", "us-market")
+PROFILE_NAMES = ("Trip Agent", "旅遊總指揮官 小居", "Schedule Manager")
 
 
 def digest(data):
@@ -73,46 +74,46 @@ def jobs(root, profile):
 def ensure_job(root, profile, name, schedule, prompt, deliver, *, script=None,
                monitor=None, continuity=False):
     matches = [j for j in jobs(root, profile) if j.get("name") == name]
-    if len(matches) > 1:
-        raise RuntimeError(f"Duplicate job name {name}; resolve manually")
+    created = not matches
     python = str(Path(sys.executable).resolve())
     expected = {"prompt": prompt, "deliver": deliver, "script": script,
                 "monitor_script": monitor, "no_agent": bool(script),
                 "monitor_url": None, "timezone": "Asia/Taipei", "catch_up": False,
                 "context_from": ["self"] if continuity else None,
+                "interpreter": python if script or monitor else None,
+                "failure_deliver": "local" if continuity else None,
                 "model": None, "provider": None, "base_url": None,
                 "skills": [], "enabled_toolsets": None, "workdir": None}
-    if script or monitor:
-        expected["interpreter"] = python
-    if continuity:
-        expected["failure_deliver"] = "local"
-    if matches:
-        job = matches[0]
-        if (job.get("schedule", {}).get("kind") != "cron"
-                or job.get("schedule", {}).get("expr") != schedule
-                or job.get("repeat", {}).get("times") is not None or any(
-                job.get(key) != value for key, value in expected.items())):
-            raise RuntimeError(f"Existing job differs; refusing to change: {name}")
-        return
-    args = ["-p", profile, "cron", "create", schedule]
-    if prompt:
-        args.append(prompt)
-    args += ["--name", name, "--deliver", deliver, "--catch-up", "off",
-             "--timezone", "Asia/Taipei", "--paused"]
-    if script:
-        args += ["--script", script, "--no-agent", "--interpreter", python]
-    if monitor:
-        args += ["--monitor-script", monitor, "--interpreter", python]
-    if continuity:
-        args += ["--continuity", "--failure-deliver", "local"]
-    run(root, *args)
-    # Validate the persisted native job, including recovery from a prior interrupted run.
-    ensure_job(root, profile, name, schedule, prompt, deliver, script=script,
-               monitor=monitor, continuity=continuity)
+    if created:
+        args = ["-p", profile, "cron", "create", schedule]
+        if prompt:
+            args.append(prompt)
+        args += ["--name", name, "--deliver", deliver, "--catch-up", "off",
+                 "--timezone", "Asia/Taipei", "--paused"]
+        if script:
+            args += ["--script", script, "--no-agent", "--interpreter", python]
+        if monitor:
+            args += ["--monitor-script", monitor, "--interpreter", python]
+        if continuity:
+            args += ["--continuity", "--failure-deliver", "local"]
+        run(root, *args)
+        matches = [j for j in jobs(root, profile) if j.get("name") == name]
+    if len(matches) != 1:
+        raise RuntimeError(f"Expected exactly one {name} job in {profile}, found {len(matches)}")
+    job = matches[0]
+    if (job.get("schedule", {}).get("kind") != "cron"
+            or job.get("schedule", {}).get("expr") != schedule
+            or job.get("repeat", {}).get("times") is not None
+            or any(job.get(key) != value for key, value in expected.items())):
+        raise RuntimeError(f"Existing job differs; refusing to change: {name}")
+    if created and (job.get("state") != "paused" or job.get("enabled") is not False):
+        raise RuntimeError(f"Hermes did not create {name} paused")
 
 
 def install(root, delivery):
     root = root.expanduser().resolve()
+    if root == PACKAGE or PACKAGE in root.parents:
+        raise RuntimeError("Choose a Hermes root outside the Git checkout")
     node = shutil.which("node")
     if not node or not shutil.which("hermes"):
         raise RuntimeError("Node and Hermes must be available on PATH")
@@ -139,12 +140,13 @@ def install(root, delivery):
         root.mkdir(parents=True, exist_ok=True)
         receipt = {"version": 1, "profiles": {}}
         save_receipt(receipt_path, receipt)
-    for profile in PROFILES:
+    for profile, display_name in zip(PROFILES, PROFILE_NAMES):
         home = root / "profiles" / profile
         soul = home / "SOUL.md"
         wanted = rendered(PACKAGE / "roles" / f"{profile}.md", root)
         if not home.exists():
-            run(root, "profile", "create", profile, "--no-alias", "--no-skills")
+            run(root, "profile", "create", profile, "--no-alias", "--no-skills",
+                "--description", display_name)
             if not soul.is_file():
                 raise RuntimeError(f"Native profile has no scaffold SOUL: {soul}")
             receipt["profiles"][profile] = digest(soul.read_bytes())

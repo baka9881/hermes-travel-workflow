@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "time_zone": "Asia/Taipei",
+  "coverage": {
+    "status": "uninitialized",
+    "start": null,
+    "end": null,
+    "checked_at": null,
+    "unknown_ranges": []
+  },
+  "events": [],
+  "changes": [],
+  "sources": []
+}

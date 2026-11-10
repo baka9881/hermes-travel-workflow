@@ -1,0 +1,12 @@
+# Local Hermes state and scanner dependencies
+.env
+.env.*
+*.local.json
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.log
+__pycache__/
+node_modules/
+scanner/data/
