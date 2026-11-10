@@ -73,6 +73,7 @@ def jobs(root, profile):
 
 def ensure_job(root, profile, name, schedule, prompt, deliver, *, script=None,
                monitor=None, continuity=False):
+    prompt = prompt.strip()
     matches = [j for j in jobs(root, profile) if j.get("name") == name]
     created = not matches
     python = str(Path(sys.executable).resolve())
