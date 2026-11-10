@@ -14,10 +14,10 @@ flowchart LR
 | Hermes profile | Telegram 顯示名稱 | 工作 |
 | --- | --- | --- |
 | `trip` | Trip Agent | 掃描機票，查詢住宿與價差 |
-| `project-manager` | 旅遊總指揮官 小居 | 整合日期、整趟費用與候選方案 |
-| `us-market` | Schedule Manager | 管理滾動十二個月的行程，核對完整出遊時段 |
+| `travel-commander` | 旅遊總指揮官 小居 | 整合日期、整趟費用與候選方案 |
+| `schedule-manager` | Schedule Manager | 管理滾動十二個月的行程，核對完整出遊時段 |
 
-表中的名稱用來對照聊天機器人。Telegram Bot 的名稱由 Telegram 帳號端設定。三個 profile 使用原生 Hermes 的 `command-center` Kanban 交接。專員在原卡片附上可核對的成果，旅遊總指揮官覆核後才結案。日曆由 Schedule Manager 寫入，旅行偏好與機會紀錄由旅遊總指揮官維護。
+表中的名稱用來對照聊天機器人。舊版使用 `project-manager` 與 `us-market` 作為 profile ID；用舊版裝好的 Hermes 資料目錄請保留原 ID，或改用新的資料目錄重新安裝。Telegram Bot 的名稱由 Telegram 帳號端設定。三個 profile 使用原生 Hermes 的 `command-center` Kanban 交接。專員在原卡片附上可核對的成果，旅遊總指揮官覆核後才結案。日曆由 Schedule Manager 寫入，旅行偏好與機會紀錄由旅遊總指揮官維護。
 
 ## 在 Windows 安裝
 
@@ -36,10 +36,10 @@ $env:HERMES_HOME = $workflowRoot
 hermes profile list
 hermes kanban --board command-center list
 hermes -p trip cron list --all
-hermes -p project-manager cron list --all
+hermes -p travel-commander cron list --all
 ```
 
-安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，首次安裝加上 `--deliver telegram`，並為 `project-manager` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
+安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，首次安裝加上 `--deliver telegram`，並為 `travel-commander` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
 
 ## 啟動與第一次使用
 
@@ -55,8 +55,8 @@ py -3 "$env:HERMES_HOME/profiles/trip/scripts/scan-trip.py" add-region Japan 日
 py -3 "$env:HERMES_HOME/profiles/trip/scripts/scan-trip.py" regions
 
 hermes -p trip cron resume "<scanner-job-id>"
-hermes -p project-manager cron resume "<weekly-job-id>"
-hermes -p project-manager cron resume "<alerts-job-id>"
+hermes -p travel-commander cron resume "<weekly-job-id>"
+hermes -p travel-commander cron resume "<alerts-job-id>"
 ```
 
 | 排程 | 台北時間 | 工作 |
@@ -73,7 +73,7 @@ hermes -p project-manager cron resume "<alerts-job-id>"
 npm --prefix scanner test
 npm --prefix scanner run typecheck
 py -3 -m unittest discover -s tests
-py -3 "$env:HERMES_HOME/profiles/project-manager/scripts/travel-scout.py" --snapshot
+py -3 "$env:HERMES_HOME/profiles/travel-commander/scripts/travel-scout.py" --snapshot
 ```
 
 安裝命令可以重跑以檢查已安裝設定。重跑時使用與首次安裝相同的 `--deliver`；選項不同時，安裝器會判定排程定義衝突並停止，不會改動既有排程。若發現角色或排程定義衝突，先在本機檢視錯誤訊息。移機時使用新的 checkout 和 Hermes 資料目錄，按上面步驟配置帳號。需要延續原有行程和偏好時，在本機核對 schema 後移轉 `shared/annual-schedule/calendar.json` 及 `shared/travel-workflow/` 下的 `preferences.json` 與 `opportunities.json`。新安裝的 `runtime.json` 記錄新環境的路徑。個人資料、掃描 SQLite、帳號憑證、聊天紀錄和私人 Hermes 外掛由原環境獨立管理。
