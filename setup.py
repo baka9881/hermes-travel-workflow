@@ -12,6 +12,11 @@ import sys
 PACKAGE = Path(__file__).resolve().parent
 PROFILES = ("trip", "travel-commander", "schedule-manager")
 PROFILE_NAMES = ("Trip Agent", "旅遊總指揮官 小居", "Schedule Manager")
+JOBS = (("trip", "travel-workflow/scanner"),
+        ("travel-commander", "travel-workflow/weekly"),
+        ("travel-commander", "travel-workflow/alerts"))
+DELIVERED_JOBS = JOBS[1:]
+RECEIPT = ".travel-workflow-install.json"
 
 
 def digest(data):
@@ -106,7 +111,9 @@ def ensure_job(root, profile, name, schedule, prompt, deliver, *, script=None,
             or job.get("schedule", {}).get("expr") != schedule
             or job.get("repeat", {}).get("times") is not None
             or any(job.get(key) != value for key, value in expected.items())):
-        raise RuntimeError(f"Existing job differs; refusing to change: {name}")
+        hint = (f"; to switch delivery run: setup.py delivery {deliver} --root <root>"
+                if job.get("deliver") != deliver and name != "travel-workflow/scanner" else "")
+        raise RuntimeError(f"Existing job differs; refusing to change: {name}{hint}")
     if created and (job.get("state") != "paused" or job.get("enabled") is not False):
         raise RuntimeError(f"Hermes did not create {name} paused")
 
@@ -130,7 +137,7 @@ def install(root, delivery):
     missing = [str(p) for p in required if not p.is_file()]
     if missing or not scanner.is_dir():
         raise RuntimeError(f"Package files missing: {missing}; scanner={scanner}")
-    receipt_path = root / ".travel-workflow-install.json"
+    receipt_path = root / RECEIPT
     if receipt_path.exists():
         receipt = read_json(receipt_path)
         if receipt.get("version") != 1:
@@ -141,6 +148,7 @@ def install(root, delivery):
         root.mkdir(parents=True, exist_ok=True)
         receipt = {"version": 1, "profiles": {}}
         save_receipt(receipt_path, receipt)
+    delivery = delivery_for(receipt, delivery)
     for profile, display_name in zip(PROFILES, PROFILE_NAMES):
         home = root / "profiles" / profile
         soul = home / "SOUL.md"
@@ -186,20 +194,126 @@ def install(root, delivery):
     ensure_job(root, "travel-commander", "travel-workflow/weekly", "0 9 * * 1", weekly, delivery, continuity=True)
     ensure_job(root, "travel-commander", "travel-workflow/alerts", "*/15 * * * *", alert, delivery,
                monitor="travel-scout.py", continuity=True)
+    if receipt.get("delivery") != delivery:
+        receipt["delivery"] = delivery
+        save_receipt(receipt_path, receipt)
     print(f"Installed in {root}. New jobs are paused; existing job state was preserved.")
+    if not (scanner / "node_modules/tsx/dist/cli.mjs").is_file():
+        print("Scanner dependencies are not installed yet: npm --prefix scanner ci --ignore-scripts")
+
+
+def delivery_for(receipt, requested):
+    """An explicit --deliver wins; otherwise keep what this root was installed with."""
+    return requested or receipt.get("delivery") or "local"
+
+
+def managed(root):
+    root = root.expanduser().resolve()
+    path = root / RECEIPT
+    if not path.is_file() or read_json(path).get("version") != 1:
+        raise RuntimeError(f"Root is not managed by this installer: {root}")
+    return root, read_json(path)
+
+
+def managed_job(root, profile, name):
+    matches = [j for j in jobs(root, profile) if j.get("name") == name]
+    if len(matches) != 1 or not isinstance(matches[0].get("id"), str):
+        raise RuntimeError(f"Expected exactly one {name} job in {profile}, found {len(matches)}; run install first")
+    return matches[0]
+
+
+def set_state(root, action):
+    root, _ = managed(root)
+    found = [(profile, managed_job(root, profile, name)) for profile, name in JOBS]
+    for profile, job in found:
+        if (job.get("enabled") is True) == (action == "resume"):
+            print(f"{job['name']}: already {'running' if action == 'resume' else 'paused'}")
+            continue
+        run(root, "-p", profile, "cron", action, job["id"])
+        print(f"{job['name']}: {'resumed' if action == 'resume' else 'paused'}")
+
+
+def set_delivery(root, target):
+    root, receipt = managed(root)
+    found = [(profile, managed_job(root, profile, name)) for profile, name in DELIVERED_JOBS]
+    for profile, job in found:
+        if job.get("deliver") != target:
+            run(root, "-p", profile, "cron", "edit", job["id"], "--deliver", target)
+        print(f"{job['name']}: deliver {target}")
+    receipt["delivery"] = target
+    save_receipt(root / RECEIPT, receipt)
+
+
+def check(root):
+    """Read-only health report. Returns 1 when something needs attention."""
+    root, _ = managed(root)
+    problems = []
+    try:
+        runtime = read_json(root / "shared/travel-workflow/runtime.json")
+        scanner, node = Path(runtime["scanner_dir"]), Path(runtime["node"])
+    except (OSError, ValueError, KeyError, TypeError):
+        scanner = node = None
+        problems.append("runtime.json missing or unreadable; run install")
+    if node is not None and not node.is_file():
+        problems.append(f"node not found at {node}; run install again from a shell where node 24+ is on PATH")
+    if scanner is not None and not (scanner / "node_modules/tsx/dist/cli.mjs").is_file():
+        problems.append(f"scanner dependencies missing in {scanner}: npm --prefix scanner ci --ignore-scripts")
+    print(f"Hermes root: {root}")
+    for profile, name in JOBS:
+        found = [j for j in jobs(root, profile) if j.get("name") == name]
+        if len(found) != 1:
+            problems.append(f"{name}: expected one job in {profile}, found {len(found)}")
+            continue
+        job = found[0]
+        state = "running" if job.get("enabled") else "paused"
+        print(f"  {name} ({profile}): {state}, deliver={job.get('deliver')}, last={job.get('last_status') or 'never'}")
+        error = job.get("last_error") or job.get("last_delivery_error")
+        if job.get("failure_streak") or job.get("last_status") == "error" or error:
+            problems.append(f"{name}: {job.get('failure_streak', 0)} failure(s) in a row; last error: {error or 'unknown'}")
+    scout = root / "profiles/travel-commander/scripts/travel-scout.py"
+    if scout.is_file():
+        result = subprocess.run([sys.executable, str(scout), "--root", str(root)], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace")
+        try:
+            signal = json.loads(result.stdout)
+        except ValueError:
+            signal = {"status": "error"}
+        detail = ", ".join(signal.get("missing", [])) if signal.get("status") == "waiting" else ""
+        print(f"  alert gate: {signal.get('status')}{' (missing ' + detail + ')' if detail else ''}")
+    if problems:
+        print("Needs attention:")
+        for problem in problems:
+            print(f"  - {problem}")
+        return 1
+    print("No problems found.")
+    return 0
 
 
 def main():
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
-    command = sub.add_parser("install")
+    command = sub.add_parser("install", help="install or verify the workflow in a Hermes root")
     command.add_argument("--root", type=Path, required=True)
-    command.add_argument("--deliver", choices=("local", "telegram"), default="local")
+    command.add_argument("--deliver", choices=("local", "telegram"),
+                         help="digest/alert delivery for a new root (default: local, or the root's current setting)")
+    for name, text in [("check", "read-only health report"), ("resume", "start the three workflow jobs"),
+                       ("pause", "pause the three workflow jobs")]:
+        sub.add_parser(name, help=text).add_argument("--root", type=Path, required=True)
+    command = sub.add_parser("delivery", help="switch digest/alert delivery")
+    command.add_argument("target", choices=("local", "telegram"))
+    command.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
     try:
-        install(args.root, args.deliver)
+        if args.command == "check":
+            return check(args.root)
+        if args.command in ("resume", "pause"):
+            set_state(args.root, args.command)
+        elif args.command == "delivery":
+            set_delivery(args.root, args.target)
+        else:
+            install(args.root, args.deliver)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
-        print(f"Install stopped: {exc}", file=sys.stderr)
+        print(f"{args.command} stopped: {exc}", file=sys.stderr)
         return 1
     return 0
 
