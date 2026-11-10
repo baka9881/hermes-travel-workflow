@@ -244,6 +244,18 @@ def set_delivery(root, target):
     save_receipt(root / RECEIPT, receipt)
 
 
+def gateway_serving(root, profile):
+    """True when a Hermes gateway is serving this profile's cron jobs."""
+    env = os.environ.copy()
+    env["HERMES_HOME"] = str(root)
+    result = subprocess.run(["hermes", "-p", profile, "cron", "status"], env=env, text=True,
+                            encoding="utf-8", errors="replace", capture_output=True)
+    output = result.stdout + result.stderr
+    if "No scheduler is serving" in output:
+        return False
+    return "Gateway is running" in output
+
+
 def check(root):
     """Read-only health report. Returns 1 when something needs attention."""
     root, _ = managed(root)
@@ -270,6 +282,13 @@ def check(root):
         error = job.get("last_error") or job.get("last_delivery_error")
         if job.get("failure_streak") or job.get("last_status") == "error" or error:
             problems.append(f"{name}: {job.get('failure_streak', 0)} failure(s) in a row; last error: {error or 'unknown'}")
+    running = [name for profile, name in JOBS
+               if any(j.get("name") == name and j.get("enabled") for j in jobs(root, profile))]
+    serving = all(gateway_serving(root, profile) for profile in sorted({p for p, _ in JOBS}))
+    print(f"  gateway: {'running' if serving else 'not running'}")
+    if running and not serving:
+        problems.append(f"{', '.join(running)} will not run until a Hermes gateway serves this root: "
+                        f"set HERMES_HOME to it, then run hermes gateway run (or gateway install)")
     scout = root / "profiles/travel-commander/scripts/travel-scout.py"
     if scout.is_file():
         result = subprocess.run([sys.executable, str(scout), "--root", str(root)], capture_output=True,

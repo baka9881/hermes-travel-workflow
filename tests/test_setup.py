@@ -57,11 +57,35 @@ class SetupCommandTests(unittest.TestCase):
         self.hermes.add("travel-commander", "w1", "travel-workflow/weekly")
         self.hermes.add("travel-commander", "a1", "travel-workflow/alerts")
         self.hermes.add("travel-commander", "x1", "someone-else/job")
-        self.original_run = setup.run
+        self.original_run, self.original_serving = setup.run, setup.gateway_serving
         setup.run = self.hermes
+        self.serving = False
+        setup.gateway_serving = lambda root, profile: self.serving
 
     def tearDown(self):
-        setup.run = self.original_run
+        setup.run, setup.gateway_serving = self.original_run, self.original_serving
+
+    def ready_runtime(self):
+        scanner = self.root / "scanner"
+        (scanner / "node_modules/tsx/dist").mkdir(parents=True)
+        (scanner / "node_modules/tsx/dist/cli.mjs").write_text("", encoding="utf-8")
+        runtime = self.root / "shared/travel-workflow/runtime.json"
+        runtime.parent.mkdir(parents=True)
+        runtime.write_text(json.dumps({"scanner_dir": str(scanner), "node": __file__}), encoding="utf-8")
+
+    def test_check_flags_running_jobs_without_a_gateway(self):
+        self.ready_runtime()
+        status, report = self.quiet(setup.check, self.root)
+        self.assertEqual(status, 0, report)
+        self.assertIn("gateway: not running", report)
+        self.quiet(setup.set_state, self.root, "resume")
+        status, report = self.quiet(setup.check, self.root)
+        self.assertEqual(status, 1)
+        self.assertIn("will not run until a Hermes gateway", report)
+        self.serving = True
+        status, report = self.quiet(setup.check, self.root)
+        self.assertEqual(status, 0, report)
+        self.assertIn("gateway: running", report)
 
     def quiet(self, function, *args):
         out = io.StringIO()
