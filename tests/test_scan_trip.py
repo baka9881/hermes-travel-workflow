@@ -14,7 +14,7 @@ NODE = shutil.which("node")
 @unittest.skipUnless(NODE, "Node required")
 class ScanWrapperTests(unittest.TestCase):
     def setUp(self):
-        self.root = Path(tempfile.mkdtemp(prefix="hermes-wrapper-test-"))
+        self.root = Path(tempfile.mkdtemp(prefix="hermes-wrapper-test-")).resolve()
         self.scanner = self.root / "scanner with spaces"
         (self.scanner / "src").mkdir(parents=True)
         (self.scanner / "src/cli.ts").write_text("", encoding="utf-8")
