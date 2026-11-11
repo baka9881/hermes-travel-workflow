@@ -15,6 +15,9 @@ import unicodedata
 LINE_WIDTH = 40          # 20 full-width characters per bubble line on a phone
 NARROW = 0.7             # width of a Latin letter or digit, in half full-width units
 SCREEN_LINES = 30        # bubble lines visible on one phone screen
+MAX_MESSAGE_LINES = 14   # a reply should be readable at a glance; details on request
+NARRATION = re.compile(r"^(我先|我會先|我正在|接著我|首先我)")
+INTERNAL_ID = re.compile(r"(?<![\w-])(t_[0-9a-f]{6,}|opp-\d{8}[-\w]*|local-[0-9a-f]{16,})")
 MAX_LINES_PER_ITEM = 2   # one bullet or sentence should wrap to at most two lines
 
 
@@ -41,7 +44,13 @@ def check(message):
             problems.append({"kind": "code_block", "line": number, "text": stripped[:40]})
         elif stripped.startswith("|") or stripped.count("|") >= 2 or "│" in stripped:
             problems.append({"kind": "table", "line": number, "text": stripped[:40]})
-        elif rows > MAX_LINES_PER_ITEM and not stripped.startswith(("來源", "Source")):
+        if NARRATION.match(stripped.lstrip("•-* ")):
+            problems.append({"kind": "narration", "line": number, "text": stripped[:40],
+                             "hint": "report results, not the steps you are taking"})
+        if INTERNAL_ID.search(stripped):
+            problems.append({"kind": "internal_id", "line": number, "text": INTERNAL_ID.search(stripped).group(0),
+                             "hint": "do not show card, opportunity or session IDs"})
+        if rows > MAX_LINES_PER_ITEM and not stripped.startswith(("```", "|", "來源", "Source")) and "│" not in stripped and not stripped.startswith(("來源", "Source")):
             problems.append({"kind": "long_line", "line": number, "phone_lines": rows, "text": stripped[:40]})
     content = [l.strip() for l in lines if l.strip() and not l.strip().startswith(("來源", "Source", "MEDIA:"))]
     for line in content[-3:]:
@@ -49,9 +58,9 @@ def check(message):
             problems.append({"kind": "text_question", "text": line[:40],
                              "hint": "ask fixed-answer questions with clarify buttons"})
     screens = round(phone_lines / SCREEN_LINES, 2)
-    if phone_lines > SCREEN_LINES:
+    if phone_lines > MAX_MESSAGE_LINES:
         problems.append({"kind": "too_long", "phone_lines": math.ceil(phone_lines),
-                         "hint": f"keep to {SCREEN_LINES} phone lines; offer details on request"})
+                         "hint": f"keep to {MAX_MESSAGE_LINES} phone lines; cut repeats and offer details on request"})
     return {"phone_lines": math.ceil(phone_lines), "screens": screens, "problems": problems}
 
 
