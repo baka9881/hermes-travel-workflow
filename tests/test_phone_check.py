@@ -56,6 +56,12 @@ class PhoneCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, report)
         self.assertEqual(report["phone_lines"], 3)
 
+    def test_link_urls_do_not_count_toward_width(self):
+        url = "https://www.google.com/maps/search/?api=1&query=" + "%E4%B8%89" * 20
+        status, report = check(f"結論\n\n📍 [Google 地圖・查空房]({url})")
+        self.assertEqual(status, 0, report)
+        self.assertEqual(report["phone_lines"], 3)
+
     def test_trailing_text_question_is_flagged(self):
         status, report = check("結論\n\n• 湯屋要不要先預約？")
         self.assertIn("text_question", {p["kind"] for p in report["problems"]})

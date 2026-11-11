@@ -131,7 +131,7 @@ def install(root, delivery):
     scanner = (PACKAGE / "scanner").resolve()
     required = [PACKAGE / "roles" / f"{p}.md" for p in PROFILES]
     required += [PACKAGE / "prompts" / f"{p}.md" for p in ("weekly", "alert")]
-    required += [PACKAGE / "scripts" / f"{p}.py" for p in ("travel-scout", "scan-trip", "phone-check")]
+    required += [PACKAGE / "scripts" / f"{p}.py" for p in ("travel-scout", "scan-trip", "phone-check", "booking-links")]
     required += [PACKAGE / "state" / f"{p}.json" for p in ("calendar", "preferences", "opportunities")]
     required += [PACKAGE / "skills" / "travel-planning" / "SKILL.md"]
     missing = [str(p) for p in required if not p.is_file()]
@@ -173,6 +173,7 @@ def install(root, delivery):
         ("scripts/travel-scout.py", "profiles/travel-commander/scripts/travel-scout.py"),
         ("scripts/scan-trip.py", "profiles/trip/scripts/scan-trip.py"),
         ("scripts/phone-check.py", "shared/travel-workflow/phone-check.py"),
+        ("scripts/booking-links.py", "shared/travel-workflow/booking-links.py"),
         ("skills/travel-planning/SKILL.md", "profiles/travel-commander/skills/travel-planning/SKILL.md"),
     ]:
         same_or_create(root / target, rendered(PACKAGE / source, root))
