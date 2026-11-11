@@ -38,6 +38,17 @@ class PhoneCheckTests(unittest.TestCase):
         self.assertEqual(status, 0, report)
         self.assertEqual(report["phone_lines"], 3)
 
+    def test_narration_and_internal_ids_are_flagged(self):
+        status, report = check("結論\n\n我先寫好需求單，再建立看板卡。\n• 卡號 t_c07de335，狀態待處理")
+        kinds = {p["kind"] for p in report["problems"]}
+        self.assertEqual(kinds, {"narration", "internal_id"})
+
+    def test_replies_over_fourteen_phone_lines_are_too_long(self):
+        status, report = check("\n".join(f"• 第{i}項" for i in range(15)))
+        self.assertIn("too_long", {p["kind"] for p in report["problems"]})
+        status, report = check("\n".join(f"• 第{i}項" for i in range(14)))
+        self.assertEqual(report["problems"], [])
+
     def test_trailing_text_question_is_flagged(self):
         status, report = check("結論\n\n• 湯屋要不要先預約？")
         self.assertIn("text_question", {p["kind"] for p in report["problems"]})
