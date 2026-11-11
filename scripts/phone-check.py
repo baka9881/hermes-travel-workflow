@@ -67,12 +67,16 @@ def check(message):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", nargs="?", help="message file (default: stdin)")
+    parser.add_argument("--text", help="check this message text directly; no file needed")
     parser.add_argument("--json", action="store_true", help="print the report as JSON")
     args = parser.parse_args()
     if hasattr(sys.stdin, "reconfigure"):
         sys.stdin.reconfigure(encoding="utf-8")
         sys.stdout.reconfigure(encoding="utf-8")
-    message = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
+    if args.text is not None:
+        message = args.text.replace("\\n", "\n")
+    else:
+        message = open(args.file, encoding="utf-8").read() if args.file else sys.stdin.read()
     report = check(message)
     if args.json:
         print(json.dumps(report, ensure_ascii=False))
