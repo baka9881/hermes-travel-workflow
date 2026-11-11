@@ -21,7 +21,11 @@ INTERNAL_ID = re.compile(r"(?<![\w-])(t_[0-9a-f]{6,}|opp-\d{8}[-\w]*|local-[0-9a
 MAX_LINES_PER_ITEM = 2   # one bullet or sentence should wrap to at most two lines
 
 
+MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+
+
 def width(text):
+    text = MARKDOWN_LINK.sub(r"\1", text)  # Telegram shows only the link text
     text = text.replace("**", "").replace("__", "")
     return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else NARROW for ch in text)
 
