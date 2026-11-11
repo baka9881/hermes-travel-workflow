@@ -17,6 +17,12 @@ JOBS = (("trip", "travel-workflow/scanner"),
         ("travel-commander", "travel-workflow/alerts"))
 DELIVERED_JOBS = JOBS[1:]
 RECEIPT = ".travel-workflow-install.json"
+# Applied once to each newly created profile. Compress before small-window providers reject the
+# request (one reached ~75K tokens on web pages), prune old tool output early, and keep each web
+# page read short. Later user changes to these settings are left alone.
+PROFILE_SETTINGS = (("compression.threshold_tokens", "50000"),
+                    ("compression.proactive_prune_tokens", "30000"),
+                    ("web.extract_char_limit", "5000"))
 
 
 def digest(data):
@@ -160,6 +166,8 @@ def install(root, delivery):
                 raise RuntimeError(f"Native profile has no scaffold SOUL: {soul}")
             receipt["profiles"][profile] = digest(soul.read_bytes())
             save_receipt(receipt_path, receipt)
+            for key, value in PROFILE_SETTINGS:
+                run(root, "-p", profile, "config", "set", key, value)
         scaffold = receipt["profiles"].get(profile)
         if not scaffold:
             raise RuntimeError(f"Existing unowned profile: {home}")
