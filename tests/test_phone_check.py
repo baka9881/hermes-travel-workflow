@@ -49,6 +49,13 @@ class PhoneCheckTests(unittest.TestCase):
         status, report = check("\n".join(f"• 第{i}項" for i in range(14)))
         self.assertEqual(report["problems"], [])
 
+    def test_text_argument_needs_no_file(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), "--json", "--text", "結論\\n\\n• 交通：NT$240"],
+                                capture_output=True, text=True, encoding="utf-8")
+        report = json.loads(result.stdout)
+        self.assertEqual(result.returncode, 0, report)
+        self.assertEqual(report["phone_lines"], 3)
+
     def test_trailing_text_question_is_flagged(self):
         status, report = check("結論\n\n• 湯屋要不要先預約？")
         self.assertIn("text_question", {p["kind"] for p in report["problems"]})
