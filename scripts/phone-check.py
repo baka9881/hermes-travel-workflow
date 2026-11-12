@@ -6,7 +6,9 @@ with Latin letters and digits about 0.35 of that width (calibrated against a
 Telegram iOS screenshot). Exit status 1 means a problem.
 """
 import argparse
+import hashlib
 import json
+from pathlib import Path
 import math
 import re
 import sys
@@ -22,6 +24,26 @@ MAX_LINES_PER_ITEM = 2   # one bullet or sentence should wrap to at most two lin
 
 
 MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+BARE_LINK = re.compile(r"(https?://|tel:)\S+")
+LOCAL_PATH = re.compile(r"(?<![\w/])([A-Za-z]:[\\/]|\\\\|~/|/Users/|/home/)\S*|\S+\.(md|json|txt|ics|py)\b")
+BOOKING_LINKS = "Google 地圖・查空房"  # booking-links.py output: a place is being recommended
+
+
+def photo_problem(path_text):
+    """A MEDIA photo must have the source record place-photo.py writes, matching the file."""
+    path = Path(path_text)
+    record = path.with_name(path.name + ".source.json")
+    if not path.is_file():
+        return f"file not found: {path.name}"
+    if not record.is_file():
+        return f"no source record: {path.name}"
+    try:
+        expected = json.loads(record.read_text(encoding="utf-8")).get("sha256")
+    except ValueError:
+        return f"unreadable source record: {record.name}"
+    if expected != hashlib.sha256(path.read_bytes()).hexdigest():
+        return f"photo changed after it was saved: {path.name}"
+    return None
 
 
 def width(text):
@@ -40,6 +62,10 @@ def check(message):
     phone_lines = 0
     for number, line in enumerate(lines, 1):
         if line.strip().startswith("MEDIA:"):
+            problem = photo_problem(line.strip()[len("MEDIA:"):].strip())
+            if problem:
+                problems.append({"kind": "unverified_photo", "line": number, "text": problem,
+                                 "hint": "save photos with place-photo.py from the place's own page, or write 照片：未取得"})
             continue  # Telegram sends this as a photo, not as text
         rows = wrapped(line) if line.strip() else 0.5  # a blank line is about half a text line
         phone_lines += rows
@@ -54,6 +80,13 @@ def check(message):
         if INTERNAL_ID.search(stripped):
             problems.append({"kind": "internal_id", "line": number, "text": INTERNAL_ID.search(stripped).group(0),
                              "hint": "do not show card, opportunity or session IDs"})
+        plain = MARKDOWN_LINK.sub(r"\1", stripped)
+        if BARE_LINK.search(plain):
+            problems.append({"kind": "bare_link", "line": number, "text": BARE_LINK.search(plain).group(0)[:40],
+                             "hint": "paste booking-links.py output; phone numbers as plain 📞 text"})
+        if LOCAL_PATH.search(plain):
+            problems.append({"kind": "local_path", "line": number, "text": LOCAL_PATH.search(plain).group(0)[:40],
+                             "hint": "the user reads on a phone and cannot open computer files; offer details with a button"})
         if rows > MAX_LINES_PER_ITEM and not stripped.startswith(("```", "|", "來源", "Source")) and "│" not in stripped and not stripped.startswith(("來源", "Source")):
             problems.append({"kind": "long_line", "line": number, "phone_lines": rows, "text": stripped[:40]})
     content = [l.strip() for l in lines if l.strip() and not l.strip().startswith(("來源", "Source", "MEDIA:"))]
@@ -61,6 +94,9 @@ def check(message):
         if re.search(r"[？?]\s*$", line):
             problems.append({"kind": "text_question", "text": line[:40],
                              "hint": "ask fixed-answer questions with clarify buttons"})
+    if BOOKING_LINKS in message and "照片：未取得" not in message and not any(l.strip().startswith("MEDIA:") for l in lines):
+        problems.append({"kind": "missing_photo",
+                         "hint": "add a photo from place-photo.py, or write 照片：未取得 when the place's own page has none"})
     screens = round(phone_lines / SCREEN_LINES, 2)
     if phone_lines > MAX_MESSAGE_LINES:
         problems.append({"kind": "too_long", "phone_lines": math.ceil(phone_lines),

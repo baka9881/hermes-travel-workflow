@@ -18,10 +18,11 @@ JOBS = (("trip", "travel-workflow/scanner"),
 DELIVERED_JOBS = JOBS[1:]
 RECEIPT = ".travel-workflow-install.json"
 # Applied once to each newly created profile. Compress before small-window providers reject the
-# request (one reached ~75K tokens on web pages), prune old tool output early, and keep each web
-# page read short. Later user changes to these settings are left alone.
-PROFILE_SETTINGS = (("compression.threshold_tokens", "50000"),
-                    ("compression.proactive_prune_tokens", "30000"),
+# request (one rejected ~75K tokens), but above the ~40K the role, tools and skills already use: at
+# 50K one reply compressed six times and re-ran the same searches after each. Prune old tool output
+# first, and keep each web page read short. Later user changes to these settings are left alone.
+PROFILE_SETTINGS = (("compression.threshold_tokens", "64000"),
+                    ("compression.proactive_prune_tokens", "45000"),
                     ("web.extract_char_limit", "5000"))
 
 
@@ -137,7 +138,8 @@ def install(root, delivery):
     scanner = (PACKAGE / "scanner").resolve()
     required = [PACKAGE / "roles" / f"{p}.md" for p in PROFILES]
     required += [PACKAGE / "prompts" / f"{p}.md" for p in ("weekly", "alert")]
-    required += [PACKAGE / "scripts" / f"{p}.py" for p in ("travel-scout", "scan-trip", "phone-check", "booking-links")]
+    required += [PACKAGE / "scripts" / f"{p}.py" for p in ("travel-scout", "scan-trip", "phone-check", "booking-links",
+                                                                "trip-cost", "calendar-check", "place-photo")]
     required += [PACKAGE / "state" / f"{p}.json" for p in ("calendar", "preferences", "opportunities")]
     required += [PACKAGE / "skills" / "travel-planning" / "SKILL.md"]
     missing = [str(p) for p in required if not p.is_file()]
@@ -182,6 +184,9 @@ def install(root, delivery):
         ("scripts/scan-trip.py", "profiles/trip/scripts/scan-trip.py"),
         ("scripts/phone-check.py", "shared/travel-workflow/phone-check.py"),
         ("scripts/booking-links.py", "shared/travel-workflow/booking-links.py"),
+        ("scripts/trip-cost.py", "shared/travel-workflow/trip-cost.py"),
+        ("scripts/calendar-check.py", "shared/travel-workflow/calendar-check.py"),
+        ("scripts/place-photo.py", "shared/travel-workflow/place-photo.py"),
         ("skills/travel-planning/SKILL.md", "profiles/travel-commander/skills/travel-planning/SKILL.md"),
     ]:
         same_or_create(root / target, rendered(PACKAGE / source, root))
