@@ -135,5 +135,11 @@ class SetupCommandTests(unittest.TestCase):
         self.assertEqual(self.hermes.calls, [])
 
 
+class ProfileSettingsTests(unittest.TestCase):
+    def test_new_profiles_do_not_ping_the_chat_after_each_restart(self):
+        # 2026-11-12: "他還是會一直傳訊息" — every bot sent "♻️ 閘道已上線" after each gateway restart.
+        self.assertIn(("telegram.gateway_restart_notification", "false"), setup.PROFILE_SETTINGS)
+
+
 if __name__ == "__main__":
     unittest.main()
