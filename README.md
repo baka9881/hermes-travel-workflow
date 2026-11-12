@@ -39,7 +39,9 @@ hermes -p trip cron list --all
 hermes -p travel-commander cron list --all
 ```
 
-安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，執行 `py -3 .\setup.py delivery telegram --root "$workflowRoot"`（或首次安裝時加上 `--deliver telegram`），並為 `travel-commander` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
+安裝會建立三個暫停的排程，預設將結果留在 Hermes 本機紀錄。請在這個 Hermes 資料目錄設定三個 profile 的模型。若希望摘要和提醒送到 Telegram，執行 `py -3 .\setup.py delivery telegram --root "$workflowRoot"`（或首次安裝時加上 `--deliver telegram`），並為 `travel-commander` 本機設定已授權的 Telegram Bot 與 home channel。掃描器的輸出留在本機。透過 Hermes 管理模型和帳號憑證。
+
+安裝會把每個 profile 設成每天 04:00 後的第一則訊息開新對話（`session_reset`）。Hermes 0.21 起要另外裝外掛才會生效：`hermes plugins install hermes-session-reset-policy`，再 `hermes plugins enable hermes-session-reset-policy`。開新對話後，代理靠機會紀錄裡的 `pending_question` 接上前一天沒回答的按鈕問題。 [Hermes 排程](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)
 
 ## 啟動與第一次使用
 

@@ -140,6 +140,19 @@ class ProfileSettingsTests(unittest.TestCase):
         # 2026-11-12: "他還是會一直傳訊息" — every bot sent "♻️ 閘道已上線" after each gateway restart.
         self.assertIn(("telegram.gateway_restart_notification", "false"), setup.PROFILE_SETTINGS)
 
+    def test_a_fresh_conversation_starts_each_day_and_picks_up_open_questions(self):
+        # 2026-11-12: one Telegram chat grew past 100K tokens and kept compressing.
+        self.assertIn(("session_reset.mode", "daily"), setup.PROFILE_SETTINGS)
+        self.assertIn(("session_reset.at_hour", "4"), setup.PROFILE_SETTINGS)
+        for role in ("travel-commander", "trip", "schedule-manager"):
+            with self.subTest(role=role):
+                text = (Path(setup.__file__).parent / "roles" / f"{role}.md").read_text(encoding="utf-8")
+                self.assertIn("04:00", text)
+                self.assertIn("pending_question", text)
+                self.assertIn("不要猜", text)
+        commander = (Path(setup.__file__).parent / "roles" / "travel-commander.md").read_text(encoding="utf-8")
+        self.assertIn("寫進那筆機會紀錄的 `pending_question`", commander)
+
 
 if __name__ == "__main__":
     unittest.main()
