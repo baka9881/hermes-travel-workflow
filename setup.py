@@ -20,10 +20,12 @@ RECEIPT = ".travel-workflow-install.json"
 # Applied once to each newly created profile. Compress before small-window providers reject the
 # request (one rejected ~75K tokens), but above the ~40K the role, tools and skills already use: at
 # 50K one reply compressed six times and re-ran the same searches after each. Prune old tool output
-# first, and keep each web page read short. Later user changes to these settings are left alone.
+# first, and keep each web page read short. No "♻️ 閘道已上線" ping in the chat after every gateway
+# restart (2026-11-12: the user kept getting it). Later user changes to these settings are left alone.
 PROFILE_SETTINGS = (("compression.threshold_tokens", "64000"),
                     ("compression.proactive_prune_tokens", "45000"),
-                    ("web.extract_char_limit", "5000"))
+                    ("web.extract_char_limit", "5000"),
+                    ("telegram.gateway_restart_notification", "false"))
 
 
 def digest(data):
