@@ -14,7 +14,7 @@ description: Compare verified flights and lodging, check full travel windows, an
 
 每個推薦的住宿或溫泉館都附上，讓使用者一眼看出值不值得去：
 
-- 一張外觀、房間或湯屋照片：從官網或 Google 地圖取得，下載成本機圖片檔，在回覆裡另起一行寫 `MEDIA:<圖片絕對路徑>`，Telegram 會顯示成圖片。找不到可用照片就直接說明。
+- 一張外觀、房間或湯屋照片：只能用 shared/travel-workflow/place-photo.py 從這間自己的官網或訂房頁存下（它會確認照片真的在那一頁上），把它印出的 `MEDIA:` 行和說明行原樣貼上，Telegram 會顯示成圖片。不准用其他來源的圖或示意圖；找不到就寫「照片：未取得」。
 - 評分：Google 地圖星等與評論數；有 Booking 或 Agoda 也附分數。註明查詢日期。
 - 評論重點：用自己的話各摘要一句近期評論的優點和缺點，不整段複製。
 - 手機排版：每間一個短段落，照片放在段落前；分數和評論重點各一行。
