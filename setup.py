@@ -21,11 +21,16 @@ RECEIPT = ".travel-workflow-install.json"
 # request (one rejected ~75K tokens), but above the ~40K the role, tools and skills already use: at
 # 50K one reply compressed six times and re-ran the same searches after each. Prune old tool output
 # first, and keep each web page read short. No "♻️ 閘道已上線" ping in the chat after every gateway
-# restart (2026-11-12: the user kept getting it). Later user changes to these settings are left alone.
+# restart (2026-11-12: the user kept getting it). Start a fresh conversation with the first message
+# after 04:00 instead of compressing one endless chat (needs the hermes-session-reset-policy plugin;
+# the roles carry unanswered button questions over in pending_question). Later user changes to these
+# settings are left alone.
 PROFILE_SETTINGS = (("compression.threshold_tokens", "64000"),
                     ("compression.proactive_prune_tokens", "45000"),
                     ("web.extract_char_limit", "5000"),
-                    ("telegram.gateway_restart_notification", "false"))
+                    ("telegram.gateway_restart_notification", "false"),
+                    ("session_reset.mode", "daily"),
+                    ("session_reset.at_hour", "4"))
 
 
 def digest(data):
