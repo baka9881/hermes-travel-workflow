@@ -153,6 +153,16 @@ class ProfileSettingsTests(unittest.TestCase):
         commander = (Path(setup.__file__).parent / "roles" / "travel-commander.md").read_text(encoding="utf-8")
         self.assertIn("寫進那筆機會紀錄的 `pending_question`", commander)
 
+    def test_older_talks_are_searched_and_lasting_preferences_remembered(self):
+        # 2026-11-12: after the daily reset, "昨天那間飯店" could not be traced, and 小居 never saved
+        # lasting preferences (its memories folder was empty).
+        for role in ("travel-commander", "trip", "schedule-manager"):
+            with self.subTest(role=role):
+                text = (Path(setup.__file__).parent / "roles" / f"{role}.md").read_text(encoding="utf-8")
+                self.assertIn("先用 `session_search` 搜舊對話", text)
+                self.assertIn("用 `memory` 記到 `user`", text)
+                self.assertIn("一次性的行程、價格、日期不要記", text)
+
 
 if __name__ == "__main__":
     unittest.main()
