@@ -39,14 +39,14 @@ def main():
     args = parser.parse_args()
     total = sum(item["amount"] for item in args.items)
     left = args.budget - total
-    verdict = f"剩 {money(left)}" if left >= 0 else f"超出 {money(-left)}"
+    verdict = f"預算剩 {money(left)}" if left >= 0 else f"超出預算 {money(-left)}"
     sys.stdout.reconfigure(encoding="utf-8")
     if args.json:
         print(json.dumps({"total": total, "budget": args.budget, "left": left, "items": args.items}, ensure_ascii=False))
         return 0
     unsure = sum(item["amount"] for item in args.items if not item["confirmed"])
-    print(f"總計 {money(total)}，預算 {money(args.budget)}，{verdict}"
-          + (f"（其中 {money(unsure)} 未確認）" if unsure else ""))
+    note = "（全部未確認）" if unsure == total and total else f"（{money(unsure)} 未確認）" if unsure else ""
+    print(f"總計 {money(total)}，{verdict}{note}")  # short: it heads a phone-width reply
     for item in args.items:
         each = f"（{money(item['unit'])}×{item['count']}）" if item["count"] > 1 else ""
         print(f"• {item['name']} {money(item['amount'])}{each}" + ("，未確認" if not item["confirmed"] else ""))

@@ -20,7 +20,7 @@ class TripCostTests(unittest.TestCase):
         status, out, err = run("trip-cost.py", "--budget", "5000", "國光 1834 來回=467x4", "台灣好行 7322 來回=240x4",
                                "門票（大眾運輸優待）=150x2", "祝山線=150x2", "萬國別館=3200", "餐飲=1000")
         self.assertEqual(status, 0, err)
-        self.assertEqual(out.splitlines()[0], "總計 NT$7,628，預算 NT$5,000，超出 NT$2,628")
+        self.assertEqual(out.splitlines()[0], "總計 NT$7,628，超出預算 NT$2,628")
         self.assertIn("• 國光 1834 來回 NT$1,868（NT$467×4）", out)
 
     def test_under_budget_and_json(self):
@@ -30,8 +30,12 @@ class TripCostTests(unittest.TestCase):
 
     def test_unconfirmed_prices_are_shown_in_the_total(self):
         status, out, err = run("trip-cost.py", "--budget", "5000", "國光來回=467x4", "天主堂雙人房=1500?", "餐飲=800?")
-        self.assertEqual(out.splitlines()[0], "總計 NT$4,168，預算 NT$5,000，剩 NT$832（其中 NT$2,300 未確認）")
+        self.assertEqual(out.splitlines()[0], "總計 NT$4,168，預算剩 NT$832（NT$2,300 未確認）")
         self.assertIn("• 天主堂雙人房 NT$1,500，未確認", out)
+
+    def test_all_unconfirmed_is_said_once(self):
+        status, out, err = run("trip-cost.py", "--budget", "5000", "住宿=1500?", "交通=2000?")
+        self.assertEqual(out.splitlines()[0], "總計 NT$3,500，預算剩 NT$1,500（全部未確認）")
 
     def test_rejects_unparsed_items(self):
         status, out, err = run("trip-cost.py", "--budget", "100", "住宿 一千")
