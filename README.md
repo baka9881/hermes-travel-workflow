@@ -83,4 +83,15 @@ py -3 .\setup.py check --root "$workflowRoot"
 
 安裝命令可以重跑以檢查已安裝設定，並沿用這個資料目錄目前的投遞設定。要切換投遞方式時用 `setup.py delivery local|telegram`；重跑安裝時指定不同的 `--deliver`，安裝器會停止並提示改用這個指令，不會改動既有排程。若發現角色或排程定義衝突，先在本機檢視錯誤訊息。移機時使用新的 checkout 和 Hermes 資料目錄，按上面步驟配置帳號。需要延續原有行程和偏好時，在本機核對 schema 後移轉 `shared/annual-schedule/calendar.json` 及 `shared/travel-workflow/` 下的 `preferences.json` 與 `opportunities.json`。新安裝的 `runtime.json` 記錄新環境的路徑。個人資料、掃描 SQLite、帳號憑證、聊天紀錄和私人 Hermes 外掛由原環境獨立管理。
 
+## 自動修問題
+
+在 GitHub 開一個 issue 寫下哪裡不對，代理會自動重現問題、修好、跑完全部測試，然後開 PR 等你審查。它不會自己合併。
+
+- 只處理 repo 擁有者本人開的 issue，也只讀本人的留言；別人寫的內容不會交給代理。
+- 一次處理一個，從最舊的開始。分支名稱是 `agent/issue-<號碼>`。
+- 代理卡住時會在 issue 留言問你，並加上 `agent-blocked` 標籤；回覆後拿掉標籤就會再處理。不想讓代理碰的 issue 加上 `manual` 標籤。
+- 代理的 PR 改了程式卻沒有附測試，或改到 `.github/`、`tools/fix-queue.py`、`.claude/skills/fix-issue/`，CI 會擋下。
+
+做法寫在 `.claude/skills/fix-issue/SKILL.md`；`py -3 tools/fix-queue.py next` 可以看下一個會被處理的 issue。
+
 `scanner/` 收錄 Trip Bot 在提交 `baf9dfee219f396b83b6face4b085ee995d15530` 的執行與測試來源。原本的 `baka9881/trip-bot` GitHub repo 已刪除，這個目錄就是現在維護的版本，來源與修改內容見 [PROVENANCE](scanner/PROVENANCE.md)。整合版以本機 CLI 輸出接回 Hermes，排程的 Telegram 投遞由 Hermes 管理。
