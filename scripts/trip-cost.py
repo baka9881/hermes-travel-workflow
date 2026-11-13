@@ -23,6 +23,8 @@ def parse(text):
         raise argparse.ArgumentTypeError(f"expected name=amount or name=price x count, got {text!r}")
     price = int(match["price"].replace(",", ""))
     count = int(match["count"] or 1)
+    if count < 1:  # a zero count would silently drop the item and understate the total
+        raise argparse.ArgumentTypeError(f"count must be at least 1, got {text!r}")
     return {"name": match["name"].strip(), "unit": price, "count": count, "amount": price * count,
             "confirmed": not match["unsure"]}
 
@@ -32,6 +34,8 @@ def money(value):
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):  # item names are Chinese; errors must name them legibly too
+        stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--budget", type=int, required=True, help="whole-trip budget in NT$")
     parser.add_argument("items", nargs="+", type=parse)
@@ -40,7 +44,6 @@ def main():
     total = sum(item["amount"] for item in args.items)
     left = args.budget - total
     verdict = f"預算剩 {money(left)}" if left >= 0 else f"超出預算 {money(-left)}"
-    sys.stdout.reconfigure(encoding="utf-8")
     if args.json:
         print(json.dumps({"total": total, "budget": args.budget, "left": left, "items": args.items}, ensure_ascii=False))
         return 0
