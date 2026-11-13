@@ -55,11 +55,13 @@ CALENDAR = {
     "coverage": {"unknown_ranges": [{"start": "2026-11-11", "end_exclusive": "2027-01-17", "domains": ["personal", "work"]}]},
     "events": [
         {"name": "相對論", "type": "course", "busy_status": "busy", "start": "2026-09-18T13:40:00+08:00",
-         "end": "2026-09-18T16:30:00+08:00", "recurrence": {"rrule": "FREQ=WEEKLY;BYDAY=FR;UNTIL=20270116T155959Z"}},
+         "end": "2026-09-18T16:30:00+08:00", "recurrence": {"rrule": "FREQ=WEEKLY;BYDAY=FR;UNTIL=20270116T155959Z", "excluded_dates": ["2027-01-01"]}},
         {"name": "作業系統 作業3", "type": "academic_deadline", "due": {"local": "2026-12-19T23:59:00+08:00"}},
         {"name": "115-1 學期考試", "type": "exam_period", "date_range": {"start_date": "2026-12-28", "end_date": "2026-12-31"}},
         {"name": "行憲紀念日", "type": "school_holiday", "busy_status": "free", "all_day": True,
          "start": "2026-12-25T00:00:00+08:00", "end": "2026-12-25T23:59:59+08:00"},
+        {"name": "礁溪兩天一夜［已改列備案］", "type": "travel", "busy_status": "free", "confirmation_status": "superseded_backup",
+         "start": "2026-12-26T13:00:00+08:00", "end": "2026-12-26T18:00:00+08:00"},
     ],
 }
 
@@ -90,6 +92,17 @@ class CalendarCheckTests(unittest.TestCase):
         self.assertIn("12/25（五）行憲紀念日：放假", out)
         self.assertIn("12/28（一）115-1 學期考試：時段未公布", out)
         self.assertIn("12/29（二）115-1 學期考試", out)
+
+    def test_cancelled_class_is_not_shown_as_a_class_day(self):
+        # 12/7 校慶補假: the weekly course listed the day in excluded_dates but was still shown as "要上課".
+        out = self.check("2027-01-01", "2027-01-01")
+        self.assertIn("1/1（五）相對論：停課", out)
+        self.assertNotIn("要上課", out)
+
+    def test_backup_plan_is_not_shown_as_a_day_off(self):
+        out = self.check("2026-12-26", "2026-12-26")
+        self.assertIn("礁溪兩天一夜［已改列備案］：13:00–18:00，備案，不佔時間", out)
+        self.assertNotIn("放假", out)
 
     def test_short_output(self):
         self.assertLess(len(self.check("2026-12-19", "2026-12-20")), 300)

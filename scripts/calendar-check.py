@@ -17,6 +17,7 @@ import sys
 DEFAULT = Path(__file__).resolve().parents[1] / "annual-schedule" / "calendar.json"
 WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"]
 RRULE_DAYS = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
+CANCELLED = "停課"
 STATUS = {"busy": "要上課／有事", "free": "放假", "tentative": "暫定", "remote_asynchronous": "非同步線上"}
 
 
@@ -41,10 +42,11 @@ def occurrences(event, start, end):
         weekdays = {RRULE_DAYS[d] for d in parts.get("BYDAY", "").split(",") if d in RRULE_DAYS}
         first = day(event["start"])
         until = datetime.strptime(parts["UNTIL"][:8], "%Y%m%d").date() if "UNTIL" in parts else end
+        skipped = set(rule.get("excluded_dates") or [])
         when = max(start, first)
         while when <= min(end, until):
             if when.weekday() in weekdays:
-                yield when, f"{clock(event['start'])}–{clock(event.get('end'))}"
+                yield when, CANCELLED if when.isoformat() in skipped else f"{clock(event['start'])}–{clock(event.get('end'))}"
             when += timedelta(days=1)
         return
     if event.get("start"):
@@ -68,7 +70,12 @@ def check(calendar, start, end):
     lines = []
     for event in calendar.get("events", []):
         for when, times in occurrences(event, start, end):
-            status = STATUS.get(event.get("busy_status"), "")
+            if times == CANCELLED:
+                status = ""
+            elif event.get("confirmation_status") == "superseded_backup":
+                status = "備案，不佔時間"
+            else:
+                status = STATUS.get(event.get("busy_status"), "")
             detail = "，".join(x for x in (times, status) if x)
             lines.append((when, f"{when.month}/{when.day}（{WEEKDAYS[when.weekday()]}）{event['name'][:24]}" + (f"：{detail}" if detail else "")))
     lines.sort()
