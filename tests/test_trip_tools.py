@@ -41,6 +41,15 @@ class TripCostTests(unittest.TestCase):
         status, out, err = run("trip-cost.py", "--budget", "100", "住宿 一千")
         self.assertNotEqual(status, 0)
 
+    def test_rejects_zero_count_and_names_the_item(self):
+        # Issue #14: "門票=150x0" was counted as NT$0, so the total came out too low.
+        for flags in ((), ("--json",)):
+            status, out, err = run("trip-cost.py", "--budget", "5000", "門票=150x0", "住宿=3200", *flags)
+            self.assertNotEqual(status, 0, out)
+            self.assertNotIn("總計", out)
+            self.assertNotIn("total", out)
+            self.assertIn("門票=150x0", err)
+
 
 CALENDAR = {
     "coverage": {"unknown_ranges": [{"start": "2026-11-11", "end_exclusive": "2027-01-17", "domains": ["personal", "work"]}]},

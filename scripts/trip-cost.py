@@ -23,6 +23,8 @@ def parse(text):
         raise argparse.ArgumentTypeError(f"expected name=amount or name=price x count, got {text!r}")
     price = int(match["price"].replace(",", ""))
     count = int(match["count"] or 1)
+    if count < 1:  # a zero count would silently drop the item and understate the total
+        raise argparse.ArgumentTypeError(f"count must be at least 1, got {text!r}")
     return {"name": match["name"].strip(), "unit": price, "count": count, "amount": price * count,
             "confirmed": not match["unsure"]}
 
