@@ -13,6 +13,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -29,3 +31,6 @@ jobs:
         run: npm --prefix scanner run typecheck
       - name: Workflow tests
         run: python -m unittest discover -s tests -v
+      - name: Agent pull request guard
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'agent/')
+        run: python tools/fix-queue.py check-pr
