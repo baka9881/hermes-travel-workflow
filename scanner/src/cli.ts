@@ -426,7 +426,7 @@ async function hotelsFor(code: string | undefined, nearby = false) {
   ]);
   const allLink = buildHotelNameUrl({ city: row.city, checkIn: row.outboundDate, checkOut: row.returnDate, currency: row.currency, country: watch.country });
   if (!result) {
-    console.log('\n這次沒查到這段日期的住宿價格（Google Hotels 可能沒套用日期或暫時擋住了），可以稍後再試。');
+    console.log('\n這次沒查到這段日期的住宿價格，\n可以稍後再試。\n（Google Hotels 可能沒套用日期\n或暫時擋住了）');
     return;
   }
   if (!result.picks.length) {
@@ -660,7 +660,7 @@ async function tripSearch(cityArg: string | undefined, outboundDate: string | un
   const nights = nightsOf(stay);
   console.log(`✈️ *${watch?.originLabel ?? '台北'} → ${cityLabel(city)}*\n${dateRange(outboundDate, returnDate)}・${nights} 晚・來回`);
   if (!found?.flights.length) {
-    console.log('\n這次沒讀到航班（Google 可能暫時擋住或這條航線沒有航班），可以稍後再試。');
+    console.log('\n這次沒讀到航班，可以稍後再試。\n（Google 可能暫時擋住，\n或這條航線沒有航班）');
     keyboard = [[FLIGHT_LIST_BUTTON]];
     return;
   }
@@ -805,11 +805,11 @@ async function roomsFor(which: string | undefined) {
     // Short lines: a room with four kinds of beds did not fit a phone on one line (2026-10-19).
     for (const line of phoneLines(facts)) console.log(line);
     // The hotel's own photos outrank its bed list: say so when they disagree.
-    if (room.bunkInPhotos && !room.beds.some(bed => /bunk/i.test(bed))) console.log('⚠️ 照片是上下鋪（一張床在上層，要爬梯子）');
+    if (room.bunkInPhotos && !room.beds.some(bed => /bunk/i.test(bed))) console.log('⚠️ 照片是上下鋪\n（一張床在上層，要爬梯子）');
     if (room.guests !== null) console.log(`可住 ${room.guests} 人${room.guests < travelers ? `　⚠️ 你們 ${travelers} 人住不下` : ''}`);
     if (room.stayTotal !== null) console.log(`${nights} 晚 ${money(room.stayTotal, currency)}（每晚 ${money(Math.round(room.stayTotal / nights), currency)}）`);
     if (samePhotos) console.log('（照片和上一個房型相同）');
-    else if (room.resale) console.log('（第三方轉售方案，Booking 沒有這個方案的房間照）');
+    else if (room.resale) console.log('（第三方轉售方案，\nBooking 沒有這個方案的房間照）');
     else if (!room.photos.length) console.log(`（${source} 沒有這個房型的房間照）`);
   }
   beginSegment();

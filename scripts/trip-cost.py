@@ -1,7 +1,7 @@
 """Add up a trip's costs and compare the total with the budget.
 
-Example:
-  trip-cost.py --budget 5000 "國光 1834 來回=467x4" "萬國別館雙人房=3200" "祝山線=150x2"
+Example (made-up names; never copy them into a reply):
+  trip-cost.py --budget 5000 "範例客運來回=467x4" "範例旅館雙人房=3200" "範例餐費=800?"
 
 Each item is "name=amount" or "name=unit price x count" (x, *, or ×). End an item with "?" when
 its price has no current official source (an estimate, an old article, a meal budget); the total
@@ -14,7 +14,8 @@ import json
 import re
 import sys
 
-ITEM = re.compile(r"^(?P<name>.+?)=\s*(?:NT\$)?(?P<price>[\d,]+)\s*(?:[x*×]\s*(?P<count>\d+))?\s*(?P<unsure>[?？])?\s*$")
+# "?" may follow the price or the count: "餐飲=800?x1" failed once and the agent added up by hand (2026-11-14).
+ITEM = re.compile(r"^(?P<name>.+?)=\s*(?:NT\$)?(?P<price>[\d,]+)\s*(?P<unsure1>[?？])?\s*(?:[x*×]\s*(?P<count>\d+))?\s*(?P<unsure2>[?？])?\s*$")
 
 
 def parse(text):
@@ -25,8 +26,11 @@ def parse(text):
     count = int(match["count"] or 1)
     if count < 1:  # a zero count would silently drop the item and understate the total
         raise argparse.ArgumentTypeError(f"count must be at least 1, got {text!r}")
-    return {"name": match["name"].strip(), "unit": price, "count": count, "amount": price * count,
-            "confirmed": not match["unsure"]}
+    # "餐費估算?=400x2" put the mark on the name, and the meals were counted as confirmed (2026-11-14).
+    name = match["name"].strip()
+    unsure_name = name.endswith(("?", "？"))
+    return {"name": name.rstrip("?？").strip(), "unit": price, "count": count, "amount": price * count,
+            "confirmed": not (match["unsure1"] or match["unsure2"] or unsure_name)}
 
 
 def money(value):

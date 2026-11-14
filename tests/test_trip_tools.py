@@ -33,6 +33,19 @@ class TripCostTests(unittest.TestCase):
         self.assertEqual(out.splitlines()[0], "總計 NT$4,168，預算剩 NT$832（NT$2,300 未確認）")
         self.assertIn("• 天主堂雙人房 NT$1,500，未確認", out)
 
+    def test_unconfirmed_mark_before_the_count(self):
+        # 2026-11-14 (Telegram test): "兩天餐飲小吃=800?x1" was rejected and the agent added up by hand.
+        status, out, err = run("trip-cost.py", "--budget", "8000", "客運來回=206x2", "餐飲=800?x1", "宵夜=100？x2")
+        self.assertEqual(status, 0, err)
+        self.assertEqual(out.splitlines()[0], "總計 NT$1,412，預算剩 NT$6,588（NT$1,000 未確認）")
+
+    def test_unconfirmed_mark_on_the_name(self):
+        # 2026-11-14 (Telegram test): "兩天餐費估算?=400x2" was counted as a confirmed price.
+        status, out, err = run("trip-cost.py", "--budget", "8000", "交通=266x2", "兩天餐費估算?=400x2")
+        self.assertEqual(status, 0, err)
+        self.assertEqual(out.splitlines()[0], "總計 NT$1,332，預算剩 NT$6,668（NT$800 未確認）")
+        self.assertIn("• 兩天餐費估算 NT$800（NT$400×2），未確認", out)
+
     def test_all_unconfirmed_is_said_once(self):
         status, out, err = run("trip-cost.py", "--budget", "5000", "住宿=1500?", "交通=2000?")
         self.assertEqual(out.splitlines()[0], "總計 NT$3,500，預算剩 NT$1,500（全部未確認）")

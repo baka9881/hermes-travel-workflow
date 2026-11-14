@@ -1,8 +1,8 @@
 """Save a place's photo from the place's own page and print the MEDIA line for the reply.
 
-Example:
-  place-photo.py "山口溫泉飯店" --page https://www.example-hotel.com.tw/rooms.html \
-      --image https://www.example-hotel.com.tw/images/room-double.jpg --label 經濟雙人房
+Example (a made-up place; never copy it into a reply):
+  place-photo.py "範例溫泉旅館" --page https://www.example.com/rooms.html \
+      --image https://www.example.com/images/room.jpg --label 範例房型
 
 The photo must appear on --page: the page is fetched and must contain the image's address.
 That page must be the place's official site or its own booking-site page, never a blog,
