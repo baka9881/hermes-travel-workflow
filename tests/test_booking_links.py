@@ -21,6 +21,7 @@ def links(output):
 class BookingLinksTests(unittest.TestCase):
     def test_maps_official_booking_and_phone(self):
         status, out, err = run("三光礁溪溫泉旅館", "--phone", "03-9882128",
+                               "--phone-source", "https://www.sanguang.com.tw/contact",
                                "--official", "https://www.sanguang.com.tw/index.php#room",
                                "--booking", "https://www.agoda.com/zh-tw/some-hotel/hotel/yilan-tw.html", "--booking-label", "Agoda")
         self.assertEqual(status, 0, err)
@@ -31,6 +32,13 @@ class BookingLinksTests(unittest.TestCase):
         self.assertEqual(found["官網訂房"], "https://www.sanguang.com.tw/index.php#room")
         self.assertEqual(found["Agoda"], "https://www.agoda.com/zh-tw/some-hotel/hotel/yilan-tw.html")
         self.assertIn("📞 03-9882128", out)
+
+    def test_phone_needs_the_page_that_shows_it(self):
+        # 2026-11-14 (Telegram test): replies carried phone numbers no page in that turn had shown.
+        status, out, err = run("湯圍溝溫泉公園", "--phone", "03-987-4882")
+        self.assertNotEqual(status, 0)
+        self.assertNotIn("📞", out)
+        self.assertIn("--phone-source", err)
 
     def test_name_only_gives_maps(self):
         status, out, err = run("烏來湯布苑")
