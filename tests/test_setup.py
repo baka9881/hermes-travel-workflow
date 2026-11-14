@@ -153,6 +153,40 @@ class ProfileSettingsTests(unittest.TestCase):
         commander = (Path(setup.__file__).parent / "roles" / "travel-commander.md").read_text(encoding="utf-8")
         self.assertIn("寫進那筆機會紀錄的 `pending_question`", commander)
 
+    def test_the_answer_goes_out_with_its_buttons(self):
+        # 2026-11-14 (Telegram test): Hermes sends a reply's text only after its clarify ends, and
+        # clarify expired after 90 s. So the button question arrived alone, the plan 1.5 minutes
+        # later, and by then the buttons no longer worked.
+        # The same test sent "12/5–12/7 兩天一夜" (really three days) and the bot copied it unchecked.
+        self.assertIn(("agent.clarify_timeout", "600"), setup.PROFILE_SETTINGS)
+        for role in ("travel-commander", "trip", "schedule-manager"):
+            with self.subTest(role=role):
+                text = (Path(setup.__file__).parent / "roles" / f"{role}.md").read_text(encoding="utf-8")
+                self.assertIn("全文直接寫進 `clarify` 的 question", text)
+                self.assertIn("不要只送出按鈕", text)
+                self.assertIn("日期範圍和天數對不上", text)
+                # Same test: clarify went out in one batch with trip-cost.py, whose error was never
+                # read, so the total was added up by hand.
+                self.assertIn("`clarify` 要單獨呼叫", text)
+                self.assertIn("工具說明裡的範例名稱不是資料", text)
+                # Same test: Trip Agent said "12/6尚有空房" without opening a dated booking page, put
+                # "含早餐" from a NT$5,850 package on the NT$3,600 starting price, and wrote 4.5 stars
+                # for a 4.6/5 rating (4.5 was the cleanliness score).
+                self.assertIn("「有空房」只能寫在打開過填好入住日期的訂房頁", text)
+                self.assertIn("空房未確認", text)
+                self.assertIn("不要把不同專案或分項分數混在一起", text)
+
+    def test_tool_examples_use_made_up_places(self):
+        # 2026-11-14: the examples named real hotels from past plans (山口溫泉飯店 經濟雙人房), so a
+        # reply could not show whether a place came from a lookup or from a tool's help text.
+        for script in ("trip-cost.py", "booking-links.py", "place-photo.py"):
+            with self.subTest(script=script):
+                doc = (Path(setup.__file__).parent / "scripts" / script).read_text(encoding="utf-8").split('"""')[1]
+                example = doc.split("Example", 1)[1].split("\n\n", 1)[0]
+                self.assertIn("範例", example)
+                for real in ("山口", "三光", "萬國別館", "國光"):
+                    self.assertNotIn(real, example)
+
     def test_older_talks_are_searched_and_lasting_preferences_remembered(self):
         # 2026-11-12: after the daily reset, "昨天那間飯店" could not be traced, and 小居 never saved
         # lasting preferences (its memories folder was empty).

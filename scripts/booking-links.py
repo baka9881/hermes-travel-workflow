@@ -1,8 +1,8 @@
 """Print tap-to-open booking links for one place, ready to paste into a Telegram reply.
 
-Example:
-  booking-links.py 三光礁溪溫泉旅館 --phone 03-9882128 \
-      --official https://www.sanguang.com.tw/index.php#room
+Example (a made-up place; never copy it into a reply):
+  booking-links.py 範例溫泉旅館 --phone 03-0000000 \
+      --official https://www.example.com/rooms
 
 Google Maps always: it opens the place itself and offers "查詢空房" with dates. A booking-site
 link (--booking) and the official page (--official) are added only as exact pages you opened and

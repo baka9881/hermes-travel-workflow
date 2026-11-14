@@ -30,7 +30,10 @@ PROFILE_SETTINGS = (("compression.threshold_tokens", "64000"),
                     ("web.extract_char_limit", "5000"),
                     ("telegram.gateway_restart_notification", "false"),
                     ("session_reset.mode", "daily"),
-                    ("session_reset.at_hour", "4"))
+                    ("session_reset.at_hour", "4"),
+                    # Buttons stay usable for 10 minutes; Hermes' default 90 s expired them before
+                    # the user had read the plan on a phone (Telegram test, 2026-11-14).
+                    ("agent.clarify_timeout", "600"))
 
 
 def digest(data):
