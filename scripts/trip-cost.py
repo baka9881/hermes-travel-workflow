@@ -1,11 +1,13 @@
 """Add up a trip's costs and compare the total with the budget.
 
 Example (made-up names; never copy them into a reply):
-  trip-cost.py --budget 5000 "範例客運來回=467x4" "範例旅館雙人房=3200" "範例餐費=800?"
+  trip-cost.py --budget 5000 "範例客運來回=467x4@https://www.example.com/fares" \
+      "範例旅館雙人房=3200@https://www.example.com/rooms" "範例餐費=800"
 
-Each item is "name=amount" or "name=unit price x count" (x, *, or ×). End an item with "?" when
-its price has no current official source (an estimate, an old article, a meal budget); the total
-then says how much of it is unconfirmed. Include every cost of the trip, meals too. Use the printed total in
+Each item is "name=amount" or "name=unit price x count" (x, *, or ×), followed by "@" and the
+https page you opened that shows that price. Only items with such a page count as confirmed;
+any other item (an estimate, a remembered price, a meal budget, or one marked "?") is counted
+as unconfirmed, and the total says how much of it is. Include every cost of the trip, meals too. Use the printed total in
 the reply exactly as shown; never add numbers up by hand. The first printed line is ready to
 use as the reply's conclusion.
 """
@@ -16,9 +18,17 @@ import sys
 
 # "?" may follow the price or the count: "餐飲=800?x1" failed once and the agent added up by hand (2026-11-14).
 ITEM = re.compile(r"^(?P<name>.+?)=\s*(?:NT\$)?(?P<price>[\d,]+)\s*(?P<unsure1>[?？])?\s*(?:[x*×]\s*(?P<count>\d+))?\s*(?P<unsure2>[?？])?\s*$")
+# A price counts as confirmed only with the page that shows it (2026-11-14: a day-trip plan listed
+# "湯屋 NT$800" as confirmed though no page had been opened that turn).
+SOURCE = re.compile(r"\s*@\s*(?P<source>https://\S+)\s*$")
 
 
 def parse(text):
+    source = SOURCE.search(text)
+    if source:
+        text = text[:source.start()]
+    elif "@" in text:
+        raise argparse.ArgumentTypeError(f"a source after @ must be an https page, got {text!r}")
     match = ITEM.match(text.strip())
     if not match:
         raise argparse.ArgumentTypeError(f"expected name=amount or name=price x count, got {text!r}")
@@ -30,7 +40,8 @@ def parse(text):
     name = match["name"].strip()
     unsure_name = name.endswith(("?", "？"))
     return {"name": name.rstrip("?？").strip(), "unit": price, "count": count, "amount": price * count,
-            "confirmed": not (match["unsure1"] or match["unsure2"] or unsure_name)}
+            "source": source["source"] if source else None,
+            "confirmed": bool(source) and not (match["unsure1"] or match["unsure2"] or unsure_name)}
 
 
 def money(value):

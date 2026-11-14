@@ -15,39 +15,63 @@ def run(script, *args):
 
 
 class TripCostTests(unittest.TestCase):
+    S = "@https://www.example.com/price"  # a page that shows the price
+
     def test_alishan_total_goes_over_budget(self):
         # The agent wrote "NT$4,980, NT$20 left"; the items it listed add up to far more.
-        status, out, err = run("trip-cost.py", "--budget", "5000", "國光 1834 來回=467x4", "台灣好行 7322 來回=240x4",
-                               "門票（大眾運輸優待）=150x2", "祝山線=150x2", "萬國別館=3200", "餐飲=1000")
+        s = self.S
+        status, out, err = run("trip-cost.py", "--budget", "5000", "國光 1834 來回=467x4" + s, "台灣好行 7322 來回=240x4" + s,
+                               "門票（大眾運輸優待）=150x2" + s, "祝山線=150x2" + s, "萬國別館=3200" + s, "餐飲=1000" + s)
         self.assertEqual(status, 0, err)
         self.assertEqual(out.splitlines()[0], "總計 NT$7,628，超出預算 NT$2,628")
         self.assertIn("• 國光 1834 來回 NT$1,868（NT$467×4）", out)
 
     def test_under_budget_and_json(self):
-        status, out, err = run("trip-cost.py", "--budget", "2500", "住宿=NT$1,100", "交通=616", "--json")
+        status, out, err = run("trip-cost.py", "--budget", "2500", "住宿=NT$1,100" + self.S, "交通=616", "--json")
         report = json.loads(out)
         self.assertEqual((report["total"], report["left"]), (1716, 784))
+        self.assertEqual([item["confirmed"] for item in report["items"]], [True, False])
+        self.assertEqual(report["items"][0]["source"], "https://www.example.com/price")
 
     def test_unconfirmed_prices_are_shown_in_the_total(self):
-        status, out, err = run("trip-cost.py", "--budget", "5000", "國光來回=467x4", "天主堂雙人房=1500?", "餐飲=800?")
+        status, out, err = run("trip-cost.py", "--budget", "5000", "國光來回=467x4" + self.S, "天主堂雙人房=1500?", "餐飲=800?")
         self.assertEqual(out.splitlines()[0], "總計 NT$4,168，預算剩 NT$832（NT$2,300 未確認）")
         self.assertIn("• 天主堂雙人房 NT$1,500，未確認", out)
 
+    def test_a_price_without_its_page_is_unconfirmed(self):
+        # 2026-11-14 (Telegram test, after pressing a button): "湯圍溝日式湯屋泡湯=800" was shown as a
+        # confirmed price though no page had been opened in that turn.
+        status, out, err = run("trip-cost.py", "--budget", "6000", "交通=266x2" + self.S, "湯屋泡湯=800")
+        self.assertEqual(status, 0, err)
+        self.assertEqual(out.splitlines()[0], "總計 NT$1,332，預算剩 NT$4,668（NT$800 未確認）")
+        self.assertIn("• 湯屋泡湯 NT$800，未確認", out)
+
+    def test_a_source_must_be_an_https_page(self):
+        for bad in ("湯屋=800@記憶", "湯屋=800@http://example.com"):
+            with self.subTest(bad=bad):
+                status, out, err = run("trip-cost.py", "--budget", "6000", bad)
+                self.assertNotEqual(status, 0, out)
+
+    def test_source_urls_with_query_strings(self):
+        status, out, err = run("trip-cost.py", "--budget", "6000", "房=3600@https://example.com/r?checkin=2026-12-06&adults=2")
+        self.assertEqual(status, 0, err)
+        self.assertEqual(out.splitlines()[0], "總計 NT$3,600，預算剩 NT$2,400")
+
     def test_unconfirmed_mark_before_the_count(self):
         # 2026-11-14 (Telegram test): "兩天餐飲小吃=800?x1" was rejected and the agent added up by hand.
-        status, out, err = run("trip-cost.py", "--budget", "8000", "客運來回=206x2", "餐飲=800?x1", "宵夜=100？x2")
+        status, out, err = run("trip-cost.py", "--budget", "8000", "客運來回=206x2" + self.S, "餐飲=800?x1", "宵夜=100？x2")
         self.assertEqual(status, 0, err)
         self.assertEqual(out.splitlines()[0], "總計 NT$1,412，預算剩 NT$6,588（NT$1,000 未確認）")
 
     def test_unconfirmed_mark_on_the_name(self):
         # 2026-11-14 (Telegram test): "兩天餐費估算?=400x2" was counted as a confirmed price.
-        status, out, err = run("trip-cost.py", "--budget", "8000", "交通=266x2", "兩天餐費估算?=400x2")
+        status, out, err = run("trip-cost.py", "--budget", "8000", "交通=266x2" + self.S, "兩天餐費估算?=400x2" + self.S)
         self.assertEqual(status, 0, err)
         self.assertEqual(out.splitlines()[0], "總計 NT$1,332，預算剩 NT$6,668（NT$800 未確認）")
         self.assertIn("• 兩天餐費估算 NT$800（NT$400×2），未確認", out)
 
     def test_all_unconfirmed_is_said_once(self):
-        status, out, err = run("trip-cost.py", "--budget", "5000", "住宿=1500?", "交通=2000?")
+        status, out, err = run("trip-cost.py", "--budget", "5000", "住宿=1500?", "交通=2000")
         self.assertEqual(out.splitlines()[0], "總計 NT$3,500，預算剩 NT$1,500（全部未確認）")
 
     def test_rejects_unparsed_items(self):

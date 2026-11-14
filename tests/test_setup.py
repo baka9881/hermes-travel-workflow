@@ -175,6 +175,10 @@ class ProfileSettingsTests(unittest.TestCase):
                 self.assertIn("「有空房」只能寫在打開過填好入住日期的訂房頁", text)
                 self.assertIn("空房未確認", text)
                 self.assertIn("不要把不同專案或分項分數混在一起", text)
+                # Same test, after pressing a button: a day trip listed "湯屋 NT$800" as confirmed and a
+                # phone number with no page opened in that turn. The tools now need the page.
+                self.assertIn("@<顯示這個價格的網頁>", text)
+                self.assertIn("--phone-source <寫著這支電話的網頁>", text)
 
     def test_tool_examples_use_made_up_places(self):
         # 2026-11-14: the examples named real hotels from past plans (山口溫泉飯店 經濟雙人房), so a
