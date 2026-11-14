@@ -179,6 +179,18 @@ class ProfileSettingsTests(unittest.TestCase):
                 # phone number with no page opened in that turn. The tools now need the page.
                 self.assertIn("@<顯示這個價格的網頁>", text)
                 self.assertIn("--phone-source <寫著這支電話的網頁>", text)
+                # Same test: after "改排 12/12–12/13" was pressed, 小居 replied only "已為你調整…" and
+                # stopped, following the earlier one-line rule; it must carry on with the choice.
+                self.assertIn("就照選的那個繼續做完", text)
+                self.assertNotIn("最後的回覆只寫一句結果", text)
+
+    def test_commands_are_written_for_the_bash_terminal(self):
+        # 2026-11-14: every turn's first command failed with "/usr/bin/bash: syntax error near `&'":
+        # the roles wrote PowerShell's call operator, but Hermes' terminal tool runs bash.
+        root = Path(setup.__file__).parent
+        for path in [*(root / "roles").glob("*.md"), *(root / "prompts").glob("*.md")]:
+            with self.subTest(path=path.name):
+                self.assertNotIn('`& "', path.read_text(encoding="utf-8"))
 
     def test_tool_examples_use_made_up_places(self):
         # 2026-11-14: the examples named real hotels from past plans (山口溫泉飯店 經濟雙人房), so a
