@@ -152,6 +152,8 @@ class ProfileSettingsTests(unittest.TestCase):
                 self.assertIn("不要猜", text)
         commander = (Path(setup.__file__).parent / "roles" / "travel-commander.md").read_text(encoding="utf-8")
         self.assertIn("寫進那筆機會紀錄的 `pending_question`", commander)
+        # Test 13c: 小居 rewrote a record's source to another hotel's page; the plugin now blocks it.
+        self.assertIn("紀錄裡已有的 `source`、`queried_at`、候選日期不要改寫或刪掉", commander)
 
     def test_the_answer_goes_out_with_its_buttons(self):
         # 2026-11-14 (Telegram test): Hermes sends a reply's text only after its clarify ends, and
