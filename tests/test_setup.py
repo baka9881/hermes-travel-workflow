@@ -182,6 +182,14 @@ class ProfileSettingsTests(unittest.TestCase):
                 # Same test: a weekend price of NT$1,600 was tagged with a Booking page that showed
                 # NT$1,100. The tool now checks the page; the reply must keep its verdict.
                 self.assertIn("印出「來源網頁上沒看到這個價格」就照原樣當未確認寫，不要換網址或改數字重跑", text)
+                # Test 11: a meal estimate of NT$1,348 made the total exactly the NT$6,000 budget.
+                self.assertIn("不要為了把總計湊到剛好等於預算去調數字", text)
+                # Same tests: web_extract failed on every page (a search-only backend), so 小居 never
+                # read a price; browser_exec worked. Pages are opened one per call so each price is
+                # checked against its own page.
+                self.assertIn("打開網頁一律用 `browser_exec`", text)
+                self.assertIn("一次呼叫只開一個網址", text)
+                self.assertIn("`web_extract` 在這台電腦讀不到網頁內容", text)
                 # Same test: after "改排 12/12–12/13" was pressed, 小居 replied only "已為你調整…" and
                 # stopped, following the earlier one-line rule; it must carry on with the choice.
                 self.assertIn("就照選的那個繼續做完", text)

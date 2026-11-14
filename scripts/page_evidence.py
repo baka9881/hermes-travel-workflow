@@ -57,14 +57,41 @@ def opened_pages_show(hermes_root, key, pattern, now):
 
 def shows(db, since, key, pattern):
     """True if one page-tool result in this database shows the value and was for that page."""
-    rows = db.execute("SELECT id, session_id, tool_name, content FROM messages "
+    rows = db.execute("SELECT id, session_id, tool_call_id, tool_name, content FROM messages "
                       "WHERE role = 'tool' AND timestamp >= ?", (since,)).fetchall()
-    for row_id, session, tool, content in rows:
+    for row_id, session, call_id, tool, content in rows:
         if not tool or not tool.startswith(PAGE_TOOLS) or not content or not pattern.search(content):
             continue
-        if current_page(db, session, row_id, content) == key:
+        if key in result_pages(db, session, row_id, call_id, content):
             return True
     return False
+
+
+def own_call_pages(db, session, row_id, call_id):
+    """Pages named in the arguments of the call this result answers, e.g. new_tab('<url>')."""
+    if not call_id:
+        return set()
+    row = db.execute("SELECT tool_calls FROM messages WHERE session_id = ? AND id < ? AND tool_calls LIKE ? "
+                     "ORDER BY id DESC LIMIT 1", (session, row_id, f"%{call_id}%")).fetchone()
+    for call in json.loads(row[0]) if row else []:
+        if (call.get("id") or call.get("call_id")) == call_id:
+            return {page_key(u) for u in URL.findall(str(call.get("function", call).get("arguments", "")))}
+    return set()
+
+
+def result_pages(db, session, row_id, call_id, content):
+    """The pages a page-tool result may have come from.
+
+    1. The pages its own call opened (a browser script with new_tab('<url>'), web_extract's urls).
+       Parallel calls each open their own page, so another call's page never counts.
+    2. Else the last address in the result itself.
+    3. Else the page the browser was left on by the page-tool calls just before it
+       (a script that only reads the current page names no address)."""
+    own = own_call_pages(db, session, row_id, call_id)
+    if own:
+        return own
+    page = current_page(db, session, row_id, content)
+    return {page} if page else set()
 
 
 def current_page(db, session, row_id, content):
