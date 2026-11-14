@@ -12,6 +12,8 @@ import sys
 PACKAGE = Path(__file__).resolve().parent
 PROFILES = ("trip", "travel-commander", "schedule-manager")
 PROFILE_NAMES = ("Trip Agent", "旅遊總指揮官 小居", "Schedule Manager")
+REPLY_CHECK = "travel-reply-check"
+REPLY_CHECK_FILES = ("plugin.yaml", "__init__.py")
 JOBS = (("trip", "travel-workflow/scanner"),
         ("travel-commander", "travel-workflow/weekly"),
         ("travel-commander", "travel-workflow/alerts"))
@@ -152,6 +154,7 @@ def install(root, delivery):
                                                                 "trip-cost", "calendar-check", "place-photo", "page_evidence")]
     required += [PACKAGE / "state" / f"{p}.json" for p in ("calendar", "preferences", "opportunities")]
     required += [PACKAGE / "skills" / "travel-planning" / "SKILL.md"]
+    required += [PACKAGE / "plugins" / REPLY_CHECK / f for f in REPLY_CHECK_FILES]
     missing = [str(p) for p in required if not p.is_file()]
     if missing or not scanner.is_dir():
         raise RuntimeError(f"Package files missing: {missing}; scanner={scanner}")
@@ -201,6 +204,13 @@ def install(root, delivery):
         ("skills/travel-planning/SKILL.md", "profiles/travel-commander/skills/travel-planning/SKILL.md"),
     ]:
         same_or_create(root / target, rendered(PACKAGE / source, root))
+    # 2026-11-14: a button question went out with a total the cost tool had not printed; this
+    # plugin holds such a question back until it matches (plugins/travel-reply-check).
+    for profile in PROFILES:
+        for name in REPLY_CHECK_FILES:
+            same_or_create(root / "profiles" / profile / "plugins" / REPLY_CHECK / name,
+                           (PACKAGE / "plugins" / REPLY_CHECK / name).read_bytes())
+        run(root, "-p", profile, "plugins", "enable", REPLY_CHECK)
     for name, target in [("calendar", "shared/annual-schedule/calendar.json"),
                          ("preferences", "shared/travel-workflow/preferences.json"),
                          ("opportunities", "shared/travel-workflow/opportunities.json")]:

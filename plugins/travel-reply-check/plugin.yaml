@@ -1,0 +1,5 @@
+name: travel-reply-check
+version: 1.0.0
+description: 送出附按鈕的旅行方案前，核對總計和未確認價格與 trip-cost.py 印出的一致
+provides_hooks:
+  - pre_tool_call
