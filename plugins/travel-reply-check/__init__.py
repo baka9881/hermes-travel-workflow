@@ -10,6 +10,9 @@ clarify alone, after the tools; this hook enforces it for the figures:
   is held back until the tool has run.
 - An amount trip-cost.py marked 未確認 must say 未確認 on the line that shows it.
 
+- No MEDIA line: Telegram shows a photo only in an ordinary reply. Test 13b put
+  "MEDIA:C:/…/photos/….jpg" in a clarify question, and the phone showed that file path as text.
+
 Only clarify is checked: it is the one tool that sends the plan to the user.
 """
 import json
@@ -19,6 +22,9 @@ import re
 import sqlite3
 
 TOTAL = re.compile(r"總計 NT\$[\d,]+[^\n]*")
+MEDIA = re.compile(r"^\s*MEDIA:", re.M)
+MEDIA_PROBLEM = ("clarify 的問題裡不能放 MEDIA 照片行：手機上只會看到一串檔案路徑。"
+                 "把 MEDIA 那行從 question 拿掉（可寫「照片：選完後附上」），照片放在 clarify 之後的最後回覆裡送出。")
 TOOL = "trip-cost.py"
 
 
@@ -115,6 +121,8 @@ def pre_tool_call(tool_name, args, task_id="", session_id="", turn_id="", **kwar
         return None
     try:
         text = question_text(args)
+        if MEDIA.search(text):
+            return {"action": "block", "message": MEDIA_PROBLEM}
         if not TOTAL.search(text):
             return None
         home = os.environ.get("HERMES_HOME") or Path.home() / ".hermes"

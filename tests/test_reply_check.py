@@ -85,6 +85,15 @@ class ReplyCheckTests(unittest.TestCase):
         # A larger figure that merely starts with the same digits is not that price.
         self.assertIsNone(ask(home_with(COST), GOOD + "\n備案：龍山 NT$1,6000 套房（未確認來源）"))
 
+    def test_a_photo_line_cannot_go_into_a_button_question(self):
+        # 2026-11-14 (Telegram test 13b): the phone showed "MEDIA:C:/…/photos/132e773d353ebaab.jpg"
+        # as text inside the button question instead of a photo.
+        question = GOOD.replace("首選：", "MEDIA:C:/hermes/shared/travel-workflow/photos/x.jpg\n首選：")
+        result = ask(home_with(COST), question)
+        self.assertEqual(result["action"], "block")
+        self.assertIn("不能放 MEDIA", result["message"])
+        self.assertEqual(ask(home_with(), "要哪一間？\nMEDIA:C:/x.jpg")["action"], "block")
+
     def test_other_tools_and_plain_questions_pass(self):
         home = home_with()
         self.assertIsNone(ask(home, "要排 12/6 還是 12/13？"))
