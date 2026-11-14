@@ -85,6 +85,15 @@ class ReplyCheckTests(unittest.TestCase):
         # A larger figure that merely starts with the same digits is not that price.
         self.assertIsNone(ask(home_with(COST), GOOD + "\n備案：龍山 NT$1,6000 套房（未確認來源）"))
 
+    def test_a_photo_line_cannot_go_into_a_button_question(self):
+        # 2026-11-14 (Telegram test 13b): the phone showed "MEDIA:C:/…/photos/132e773d353ebaab.jpg"
+        # as text inside the button question instead of a photo.
+        question = GOOD.replace("首選：", "MEDIA:C:/hermes/shared/travel-workflow/photos/x.jpg\n首選：")
+        result = ask(home_with(COST), question)
+        self.assertEqual(result["action"], "block")
+        self.assertIn("不能放 MEDIA", result["message"])
+        self.assertEqual(ask(home_with(), "要哪一間？\nMEDIA:C:/x.jpg")["action"], "block")
+
     def test_other_tools_and_plain_questions_pass(self):
         home = home_with()
         self.assertIsNone(ask(home, "要排 12/6 還是 12/13？"))
@@ -113,3 +122,53 @@ class ReplyCheckTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+BEFORE = '''      "candidate_windows": [
+        "2026-11-21..2026-11-22",
+        "2026-12-05..2026-12-07"
+      ],
+      "source": "官方旅宿網站（捷絲旅宜蘭礁溪館、品文旅礁溪、礁溪老爺酒店）與宜蘭勁好玩官方觀光網",
+      "queried_at": "2026-11-11T01:36:00+08:00",
+      "status": "待補資料",
+'''
+
+
+class RecordEditTests(unittest.TestCase):
+    PATH = "C:/hermes/shared/travel-workflow/opportunities.json"
+
+    def patch(self, old, new, path=None):
+        return check.pre_tool_call("patch", {"path": path or self.PATH, "old_string": old, "new_string": new},
+                                   session_id="s1")
+
+    def test_a_records_source_cannot_be_rewritten(self):
+        # 2026-11-14 (Telegram test 13c): 小居 replaced this record's source with 龍山's page and its
+        # queried_at with that day, so 捷絲旅's prices looked sourced to a page that never showed them.
+        after = BEFORE.replace("官方旅宿網站（捷絲旅宜蘭礁溪館、品文旅礁溪、礁溪老爺酒店）與宜蘭勁好玩官方觀光網",
+                               "礁溪龍山溫泉旅館官網（https://www.ls-hotel.com.tw/rooms01.php）與葛瑪蘭客運票價網")
+        after = after.replace("2026-11-11T01:36:00+08:00", "2026-11-14T22:58:00+08:00")
+        result = self.patch(BEFORE, after)
+        self.assertEqual(result["action"], "block")
+        self.assertIn("source", result["message"])
+        self.assertIn("2026-11-11T01:36:00+08:00", result["message"])
+
+    def test_adding_a_question_or_a_new_finding_is_fine(self):
+        question = BEFORE + '      "pending_question": {"question": "要排哪天？", "choices": ["11/21", "12/6"]},\n'
+        self.assertIsNone(self.patch(BEFORE, question))
+        finding = BEFORE + '      "longshan_weekend": {"price_twd": 1800, "source": "https://www.ls-hotel.com.tw/rooms01.php",' \
+                           ' "queried_at": "2026-11-14T22:58:00+08:00"},\n'
+        self.assertIsNone(self.patch(BEFORE, finding))
+
+    def test_other_files_are_not_checked(self):
+        self.assertIsNone(self.patch(BEFORE, "", path="C:/hermes/profiles/trip/notes.json"))
+
+    def test_rewriting_the_whole_file_keeps_provenance_too(self):
+        # Retain fixtures: the user's policy forbids recursive cleanup.
+        folder = Path(tempfile.mkdtemp(prefix="hermes-records-"))
+        path = folder / "opportunities.json"
+        path.write_text("{\n" + BEFORE + "}\n", encoding="utf-8")
+        result = check.pre_tool_call("write_file", {"path": str(path), "content": "{}\n"}, session_id="s1")
+        self.assertEqual(result["action"], "block")
+        self.assertIsNone(check.pre_tool_call("write_file", {"path": str(path),
+                                                              "content": "{\n" + BEFORE + '  "x": 1\n}\n'},
+                                              session_id="s1"))

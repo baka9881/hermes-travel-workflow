@@ -48,3 +48,19 @@ def add_tool_result(root, tool, content, call_args):
                "VALUES ('s1', 'tool', ?, 'call_extra', ?, ?)", (content, tool, time.time()))
     db.commit()
     db.close()
+
+
+def add_parallel_reads(root, pages, tool="browser_exec"):
+    """One assistant message opening several pages at once, each call new_tab('<url>') then
+    printing the page text, the way 小居 calls browser_exec; results come back in order."""
+    db = sqlite3.connect(Path(root) / "profiles" / "trip" / "state.db")
+    calls = [{"id": f"call_par_{n}", "type": "function", "function": {"name": tool, "arguments": json.dumps(
+        {"code": f"new_tab('{url}')\nwait_for_load()\nprint(js('document.body.innerText'))"})}}
+             for n, (url, _) in enumerate(pages)]
+    db.execute("INSERT INTO messages (session_id, role, tool_calls, timestamp) VALUES ('s1', 'assistant', ?, ?)",
+               (json.dumps(calls), time.time()))
+    for n, (_, text) in enumerate(pages):
+        db.execute("INSERT INTO messages (session_id, role, content, tool_call_id, tool_name, timestamp) "
+                   "VALUES ('s1', 'tool', ?, ?, ?, ?)", (text, f"call_par_{n}", tool, time.time()))
+    db.commit()
+    db.close()

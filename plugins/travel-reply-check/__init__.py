@@ -10,7 +10,15 @@ clarify alone, after the tools; this hook enforces it for the figures:
   is held back until the tool has run.
 - An amount trip-cost.py marked 未確認 must say 未確認 on the line that shows it.
 
-Only clarify is checked: it is the one tool that sends the plan to the user.
+- No MEDIA line: Telegram shows a photo only in an ordinary reply. Test 13b put
+  "MEDIA:C:/…/photos/….jpg" in a clarify question, and the phone showed that file path as text.
+
+clarify is the one tool that sends a plan to the user, so it is the one checked for figures.
+
+Edits to opportunities.json (patch or write_file) must keep every existing "source" and
+"queried_at" value. Test 13c rewrote a record's source to a different hotel's page, so the
+earlier hotels' prices in that record looked sourced to a page that never showed them; it also
+dropped a candidate date window. New findings go in their own fields with their own source.
 """
 import json
 import os
@@ -19,7 +27,41 @@ import re
 import sqlite3
 
 TOTAL = re.compile(r"總計 NT\$[\d,]+[^\n]*")
+MEDIA = re.compile(r"^\s*MEDIA:", re.M)
+MEDIA_PROBLEM = ("clarify 的問題裡不能放 MEDIA 照片行：手機上只會看到一串檔案路徑。"
+                 "把 MEDIA 那行從 question 拿掉（可寫「照片：選完後附上」），照片放在 clarify 之後的最後回覆裡送出。")
 TOOL = "trip-cost.py"
+RECORDS = "opportunities.json"
+KEPT = re.compile(r'"(?:source|queried_at)"\s*:\s*"[^"\n]*"')
+RECORD_PROBLEM = ("機會紀錄裡已有的 source、queried_at 不能改寫或刪掉（那是舊資料的出處）："
+                  "{lost}。新查到的資料加成新的欄位或新的一筆，附上自己的 source 和 queried_at。")
+
+
+def lost_provenance(before, after):
+    """source/queried_at entries present in `before` but fewer times in `after`."""
+    lost = []
+    for entry in sorted(set(KEPT.findall(before))):
+        if KEPT.findall(after).count(entry) < KEPT.findall(before).count(entry):
+            lost.append(entry)
+    return lost
+
+
+def record_edit_problem(tool_name, args):
+    path = str(args.get("path") or args.get("file_path") or "")
+    if not path.replace("\\", "/").endswith(RECORDS):
+        return None
+    if tool_name == "patch":
+        before, after = str(args.get("old_string", "")), str(args.get("new_string", ""))
+    elif tool_name == "write_file":
+        try:
+            before = Path(path).read_text(encoding="utf-8-sig")
+        except OSError:
+            return None
+        after = str(args.get("content", ""))
+    else:
+        return None
+    lost = lost_provenance(before, after)
+    return RECORD_PROBLEM.format(lost="、".join(lost)) if lost else None
 
 
 def question_text(args):
@@ -111,10 +153,18 @@ def problem(text, output):
 
 
 def pre_tool_call(tool_name, args, task_id="", session_id="", turn_id="", **kwargs):
+    if tool_name in ("patch", "write_file") and isinstance(args, dict):
+        try:
+            why = record_edit_problem(tool_name, args)
+        except Exception:  # a broken check must never stop the bot
+            return None
+        return {"action": "block", "message": why} if why else None
     if tool_name != "clarify" or not isinstance(args, dict) or not session_id:
         return None
     try:
         text = question_text(args)
+        if MEDIA.search(text):
+            return {"action": "block", "message": MEDIA_PROBLEM}
         if not TOTAL.search(text):
             return None
         home = os.environ.get("HERMES_HOME") or Path.home() / ".hermes"

@@ -152,6 +152,8 @@ class ProfileSettingsTests(unittest.TestCase):
                 self.assertIn("不要猜", text)
         commander = (Path(setup.__file__).parent / "roles" / "travel-commander.md").read_text(encoding="utf-8")
         self.assertIn("寫進那筆機會紀錄的 `pending_question`", commander)
+        # Test 13c: 小居 rewrote a record's source to another hotel's page; the plugin now blocks it.
+        self.assertIn("紀錄裡已有的 `source`、`queried_at`、候選日期不要改寫或刪掉", commander)
 
     def test_the_answer_goes_out_with_its_buttons(self):
         # 2026-11-14 (Telegram test): Hermes sends a reply's text only after its clarify ends, and
@@ -181,7 +183,17 @@ class ProfileSettingsTests(unittest.TestCase):
                 self.assertIn("--phone-source <寫著這支電話的網頁>", text)
                 # Same test: a weekend price of NT$1,600 was tagged with a Booking page that showed
                 # NT$1,100. The tool now checks the page; the reply must keep its verdict.
-                self.assertIn("印出「來源網頁上沒看到這個價格」就照原樣當未確認寫，不要換網址或改數字重跑", text)
+                self.assertIn("重新打開那個網頁看清楚實際價格再算；網頁上真的沒有，就照原樣當未確認寫，不要只換個網址或改數字去湊", text)
+                # Test 11: a meal estimate of NT$1,348 made the total exactly the NT$6,000 budget.
+                self.assertIn("不要為了把總計湊到剛好等於預算去調數字", text)
+                # Same tests: web_extract failed on every page (a search-only backend), so 小居 never
+                # read a price; browser_exec worked. Pages are opened one per call so each price is
+                # checked against its own page.
+                self.assertIn("打開網頁一律用 `browser_exec`", text)
+                self.assertIn("一次呼叫只開一個網址", text)
+                # Test 13b: a MEDIA line inside a clarify question showed up as a file path.
+                self.assertIn("照片（MEDIA 那行）例外：不能放進 question", text)
+                self.assertIn("`web_extract` 在這台電腦讀不到網頁內容", text)
                 # Same test: after "改排 12/12–12/13" was pressed, 小居 replied only "已為你調整…" and
                 # stopped, following the earlier one-line rule; it must carry on with the choice.
                 self.assertIn("就照選的那個繼續做完", text)

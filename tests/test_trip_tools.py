@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-from evidence_fixture import add_tool_result, fake_hermes
+from evidence_fixture import add_parallel_reads, add_tool_result, fake_hermes
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -137,6 +137,18 @@ class TripCostTests(unittest.TestCase):
                         {"command": f"trip-cost.py --budget 6000 房=1600@{self.PAGE}"})
         status, out, err = self.cost("--budget", "6000", "房=1600" + self.S, evidence=(records, root))
         self.assertIn("全部未確認", out)
+
+    def test_pages_opened_at_once_each_count_for_their_own_price(self):
+        # 小居 opens pages with browser_exec new_tab('<url>'), often several in one batch; a price on
+        # one hotel's page must not confirm the same price claimed for another.
+        records, root = fake_hermes()
+        add_parallel_reads(root, [("https://hotel-a.example.com/rooms", "雙人房 NT$1,100"),
+                                  ("https://hotel-b.example.com/rooms", "雙人房 NT$2,000")])
+        status, out, err = self.cost("--budget", "6000", "A=1100@https://hotel-a.example.com/rooms",
+                                     "B=2000@https://hotel-b.example.com/rooms",
+                                     "A2=2000@https://hotel-a.example.com/rooms", evidence=(records, root))
+        self.assertEqual(out.splitlines()[0], "總計 NT$5,100，預算剩 NT$900（NT$2,000 未確認）")
+        self.assertIn("• A2 NT$2,000，未確認（來源網頁上沒看到這個價格）", out)
 
     def test_extracted_page_that_names_its_address(self):
         records, root = fake_hermes()
