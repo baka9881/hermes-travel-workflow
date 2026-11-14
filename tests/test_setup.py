@@ -179,6 +179,9 @@ class ProfileSettingsTests(unittest.TestCase):
                 # phone number with no page opened in that turn. The tools now need the page.
                 self.assertIn("@<顯示這個價格的網頁>", text)
                 self.assertIn("--phone-source <寫著這支電話的網頁>", text)
+                # Same test: a weekend price of NT$1,600 was tagged with a Booking page that showed
+                # NT$1,100. The tool now checks the page; the reply must keep its verdict.
+                self.assertIn("印出「來源網頁上沒看到這個價格」就照原樣當未確認寫，不要換網址或改數字重跑", text)
                 # Same test: after "改排 12/12–12/13" was pressed, 小居 replied only "已為你調整…" and
                 # stopped, following the earlier one-line rule; it must carry on with the choice.
                 self.assertIn("就照選的那個繼續做完", text)

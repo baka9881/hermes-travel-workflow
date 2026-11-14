@@ -149,7 +149,7 @@ def install(root, delivery):
     required = [PACKAGE / "roles" / f"{p}.md" for p in PROFILES]
     required += [PACKAGE / "prompts" / f"{p}.md" for p in ("weekly", "alert")]
     required += [PACKAGE / "scripts" / f"{p}.py" for p in ("travel-scout", "scan-trip", "phone-check", "booking-links",
-                                                                "trip-cost", "calendar-check", "place-photo")]
+                                                                "trip-cost", "calendar-check", "place-photo", "page_evidence")]
     required += [PACKAGE / "state" / f"{p}.json" for p in ("calendar", "preferences", "opportunities")]
     required += [PACKAGE / "skills" / "travel-planning" / "SKILL.md"]
     missing = [str(p) for p in required if not p.is_file()]
@@ -195,6 +195,7 @@ def install(root, delivery):
         ("scripts/phone-check.py", "shared/travel-workflow/phone-check.py"),
         ("scripts/booking-links.py", "shared/travel-workflow/booking-links.py"),
         ("scripts/trip-cost.py", "shared/travel-workflow/trip-cost.py"),
+        ("scripts/page_evidence.py", "shared/travel-workflow/page_evidence.py"),
         ("scripts/calendar-check.py", "shared/travel-workflow/calendar-check.py"),
         ("scripts/place-photo.py", "shared/travel-workflow/place-photo.py"),
         ("skills/travel-planning/SKILL.md", "profiles/travel-commander/skills/travel-planning/SKILL.md"),

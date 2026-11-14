@@ -5,9 +5,11 @@ Example (made-up names; never copy them into a reply):
       "範例旅館雙人房=3200@https://www.example.com/rooms" "範例餐費=800"
 
 Each item is "name=amount" or "name=unit price x count" (x, *, or ×), followed by "@" and the
-https page you opened that shows that price. Only items with such a page count as confirmed;
-any other item (an estimate, a remembered price, a meal budget, or one marked "?") is counted
-as unconfirmed, and the total says how much of it is. Include every cost of the trip, meals too. Use the printed total in
+https page you opened that shows that price. An item counts as confirmed only when that price
+is found on that page: in a page opened in the last few hours (web_extract or the browser), or
+in an opportunity record whose source is that page. Any other item (an estimate, a remembered
+price, a meal budget, a page that does not show the price, or one marked "?") is counted as
+unconfirmed, and the total says how much of it is. Include every cost of the trip, meals too. Use the printed total in
 the reply exactly as shown; never add numbers up by hand. The first printed line is ready to
 use as the reply's conclusion.
 """
@@ -15,6 +17,8 @@ import argparse
 import json
 import re
 import sys
+
+import page_evidence
 
 # "?" may follow the price or the count: "餐飲=800?x1" failed once and the agent added up by hand (2026-11-14).
 ITEM = re.compile(r"^(?P<name>.+?)=\s*(?:NT\$)?(?P<price>[\d,]+)\s*(?P<unsure1>[?？])?\s*(?:[x*×]\s*(?P<count>\d+))?\s*(?P<unsure2>[?？])?\s*$")
@@ -44,6 +48,14 @@ def parse(text):
             "confirmed": bool(source) and not (match["unsure1"] or match["unsure2"] or unsure_name)}
 
 
+def check_sources(items, records, hermes_root):
+    for item in items:
+        if item["confirmed"] and not page_evidence.shown(item["source"], page_evidence.price_pattern(item["unit"]),
+                                                         records, hermes_root):
+            item["confirmed"] = False
+            item["why"] = "來源網頁上沒看到這個價格"
+
+
 def money(value):
     return f"NT${value:,}"
 
@@ -55,7 +67,10 @@ def main():
     parser.add_argument("--budget", type=int, required=True, help="whole-trip budget in NT$")
     parser.add_argument("items", nargs="+", type=parse)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--records", default=page_evidence.RECORDS, help=argparse.SUPPRESS)  # tests only
+    parser.add_argument("--hermes-root", default=page_evidence.HERMES_ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    check_sources(args.items, args.records, args.hermes_root)
     total = sum(item["amount"] for item in args.items)
     left = args.budget - total
     verdict = f"預算剩 {money(left)}" if left >= 0 else f"超出預算 {money(-left)}"
@@ -67,7 +82,7 @@ def main():
     print(f"總計 {money(total)}，{verdict}{note}")  # short: it heads a phone-width reply
     for item in args.items:
         each = f"（{money(item['unit'])}×{item['count']}）" if item["count"] > 1 else ""
-        print(f"• {item['name']} {money(item['amount'])}{each}" + ("，未確認" if not item["confirmed"] else ""))
+        print(f"• {item['name']} {money(item['amount'])}{each}" + ("" if item["confirmed"] else f"，未確認（{item['why']}）" if item.get("why") else "，未確認"))
     return 0
 
 

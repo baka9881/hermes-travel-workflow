@@ -5,7 +5,9 @@ Example (a made-up place; never copy it into a reply):
       --phone 03-0000000 --phone-source https://www.example.com/contact
 
 A phone number is printed only with --phone-source, the page you opened that shows it
-(2026-11-14: replies carried numbers that no page in that turn had shown).
+(2026-11-14: replies carried numbers that no page in that turn had shown). The number must be
+found on that page as opened in the last few hours or as recorded in an opportunity record;
+otherwise nothing is printed and you should leave --phone out.
 
 Google Maps always: it opens the place itself and offers "查詢空房" with dates. A booking-site
 link (--booking) and the official page (--official) are added only as exact pages you opened and
@@ -15,6 +17,8 @@ silently shows a similarly named one instead. Nothing is booked; links only open
 import argparse
 import sys
 from urllib.parse import urlencode, urlsplit
+
+import page_evidence
 
 
 def https_url(text):
@@ -34,10 +38,16 @@ def main():
     parser.add_argument("--booking-label", default="訂房網站", help="link text for --booking, e.g. Agoda")
     parser.add_argument("--phone")
     parser.add_argument("--phone-source", type=https_url, help="page you opened that shows the phone number")
+    parser.add_argument("--records", default=page_evidence.RECORDS, help=argparse.SUPPRESS)  # tests only
+    parser.add_argument("--hermes-root", default=page_evidence.HERMES_ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.phone and not args.phone_source:
         parser.error("--phone needs --phone-source: the page you opened that shows this number; "
                      "leave the phone out if no page showed it")
+    pattern = page_evidence.phone_pattern(args.phone) if args.phone else None
+    if args.phone and not (pattern and page_evidence.shown(args.phone_source, pattern, args.records, args.hermes_root)):
+        parser.error(f"{args.phone} is not on {args.phone_source} as opened or recorded; "
+                     "leave --phone out, or open the page that shows the number and run again")
 
     lines = [f"📍 [Google 地圖・查空房](https://www.google.com/maps/search/?{urlencode({'api': 1, 'query': args.name})})"]
     if args.official:
